@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <stdio.h>
 #include <string.h>
 #include <iostream>
 #include <vector>
@@ -108,6 +109,16 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
     return new ExternalCommand(cmd_line);
   }
   */
+
+ char ** args = new char*;
+ int result = _parseCommandLine(cmd_line, args);
+
+ if(strcmp(args[0],"chprompt")==0){
+   return new ChPrompt(cmd_line);
+ }
+ 
+
+
   return nullptr;
 }
 
@@ -117,4 +128,20 @@ void SmallShell::executeCommand(const char *cmd_line) {
   // Command* cmd = CreateCommand(cmd_line);
   // cmd->execute();
   // Please note that you must fork smash process for some commands (e.g., external commands....)
+
+  Command * cmd = CreateCommand(cmd_line);
+  cmd->execute();
+
 }
+
+SmallShell::ChPrompt::ChPrompt(const char* cmd_line){
+    char** args = new char*;
+    int result = _parseCommandLine(cmd_line, args);
+    result<2 ? this->newPromptName = "smash" : this->newPromptName = args[1];
+}
+
+void SmallShell::ChPrompt::execute(){
+    SmallShell::getInstance().changePrompt(this->newPromptName);
+
+}
+
