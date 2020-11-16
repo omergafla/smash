@@ -110,11 +110,13 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
   }
   */
 
- char ** args = new char*;
+ char ** args = new char*[COMMAND_MAX_ARGS];
  int result = _parseCommandLine(cmd_line, args);
 
  if(strcmp(args[0],"chprompt")==0){
-   return new ChPrompt(cmd_line);
+  std::string name = "smash";
+   if(result>=2) name = args[1];
+   return new ChPrompt(name);
  }
  
 
@@ -134,10 +136,8 @@ void SmallShell::executeCommand(const char *cmd_line) {
 
 }
 
-SmallShell::ChPrompt::ChPrompt(const char* cmd_line){
-    char** args = new char*;
-    int result = _parseCommandLine(cmd_line, args);
-    result<2 ? this->newPromptName = "smash" : this->newPromptName = args[1];
+SmallShell::ChPrompt::ChPrompt(std::string name){
+   this->newPromptName = name;
 }
 
 void SmallShell::ChPrompt::execute(){

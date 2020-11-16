@@ -168,6 +168,7 @@ class SmallShell {
     public:
       std::string newPromptName = "smash";
       ChPrompt(const char* cmd_line);
+      ChPrompt(std::string newPromptName);
       virtual ~ChPrompt() {}
       void execute() override;
     };
