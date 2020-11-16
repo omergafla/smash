@@ -96,35 +96,47 @@ void ShowPidCommand::execute()
   cout << "smash pid is " << getpid() << endl;
 }
 
+// KillCommand::KillCommand(const char *cmd_line, JobsList* jobs){
+//   char **args = new char *[COMMAND_MAX_ARGS];
+//   int result = _parseCommandLine(cmd_line, args);
+// }
+
 ChangeDirCommand::ChangeDirCommand(const char *cmd_line, string plastPwd)
 {
   char **args = new char *[COMMAND_MAX_ARGS];
   int result = _parseCommandLine(cmd_line, args);
+  this->path = args[1];
 
   if (result == 2 && strcmp(args[1], "-") == 0 && plastPwd.empty())
   {
     this->is_error = true;
     this->err_message = "smash error: cd: OLDPWD not set";
   }
-  else if (result > 2){
+  else if (result > 2)
+  {
     this->is_error = true;
     this->err_message = "smash error: cd: too many arguments";
   }
-  else{
-    this->is_error = false;
-    this->err_message = "";
+  else if (strcmp(args[1], "-") == 0)
+  {
+    this->path = plastPwd;
   }
-  //this->path(args[1]);
   delete[] args;
 }
 
 void ChangeDirCommand::execute()
 {
-  if(this->is_error == true){
+  if (this->is_error == true)
+  {
     cout << this->err_message << endl;
   }
-  else{
-    //int result = chdir()
+  else
+  {
+    int result = chdir(path.c_str());
+    if (result == -1)
+    {
+      perror("smash error: chdir failed");
+    }
   }
 }
 
@@ -189,19 +201,32 @@ Command *SmallShell::CreateCommand(const char *cmd_line)
   if (strcmp(args[0], "cd") == 0)
   {
     ChangeDirCommand *cd;
-    if (this->dirHistory.empty())
-    {
-      cd = new ChangeDirCommand(cmd_line, "");
+    char *buffer = new char();
+    string curr = getcwd(buffer, COMMAND_ARGS_MAX_LENGTH);
+    if (this->dirHistory.empty()){
+      if(strcmp(args[1], "-") == 0){
+        cd = new ChangeDirCommand(cmd_line, "");
+      }
+      else{
+        cd = new ChangeDirCommand(cmd_line, curr);
+        this->dirHistory.push(curr);
+      }
     }
     else
     {
       string lastPwd = this->dirHistory.top();
-      this->dirHistory.pop();
       cd = new ChangeDirCommand(cmd_line, lastPwd);
+      if(strcmp(args[1], "-") == 0){
+        this->dirHistory.pop();
+      }
+      else{
+        this->dirHistory.push(curr);
+      }
+      delete[] buffer;
     }
     delete[] args;
     return cd;
-  }
+    }
   return nullptr;
 }
 

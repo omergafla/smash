@@ -81,7 +81,9 @@ class ShowPidCommand : public BuiltInCommand {
   void execute() override;
 };
 
+
 class JobsList;
+class JobEntry;
 class QuitCommand : public BuiltInCommand {
 // TODO: Add your data members public:
   QuitCommand(const char* cmd_line, JobsList* jobs);
@@ -89,31 +91,16 @@ class QuitCommand : public BuiltInCommand {
   void execute() override;
 };
 
-class CommandsHistory {
- protected:
-  class CommandHistoryEntry {
-	  // TODO: Add your data members
-  };
- // TODO: Add your data members
- public:
-  CommandsHistory();
-  ~CommandsHistory() {}
-  void addRecord(const char* cmd_line);
-  void printHistory();
-};
-
-class HistoryCommand : public BuiltInCommand {
- // TODO: Add your data members
- public:
-  HistoryCommand(const char* cmd_line, CommandsHistory* history);
-  virtual ~HistoryCommand() {}
-  void execute() override;
-};
 
 class JobsList {
+ std::vector<JobEntry> jobList;
  public:
   class JobEntry {
-   // TODO: Add your data members
+    int job_id;
+    string command;
+    int process_id;
+    double seconds_elapsed;
+    bool stopped;
   };
  // TODO: Add your data members
  public:
@@ -139,7 +126,8 @@ class JobsCommand : public BuiltInCommand {
 };
 
 class KillCommand : public BuiltInCommand {
- // TODO: Add your data members
+ int pid;
+ int signal;
  public:
   KillCommand(const char* cmd_line, JobsList* jobs);
   virtual ~KillCommand() {}
