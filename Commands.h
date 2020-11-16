@@ -58,10 +58,11 @@ class RedirectionCommand : public Command {
 
 class ChangeDirCommand : public BuiltInCommand {
 // TODO: Add your data members 
-  bool hyphen = false;
-  string lastPwd;
+  string err_message;
+  bool is_error;
+  string path;
 public:
-  ChangeDirCommand(const char* cmd_line, char** plastPwd);
+  ChangeDirCommand(const char* cmd_line, string plastPwd);
   virtual ~ChangeDirCommand() {}
   void execute() override;
 };
