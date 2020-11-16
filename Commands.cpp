@@ -108,9 +108,8 @@ ChangeDirCommand::ChangeDirCommand(const char *cmd_line, char **plastPwd)
     }
     if (strcmp(args[1], "..") == 0)
     {
-      hyphen = true;
       string s(*plastPwd);
-      //lastPwd = s;
+      lastPwd = s;
     }
   }
   delete[] args;
@@ -178,7 +177,9 @@ Command *SmallShell::CreateCommand(const char *cmd_line)
 
   if (strcmp(args[0], "cd") == 0)
   {
-//    ChangeDirCommand cd = new ChangeDirCommand(cmd_line, )
+    string lastPwd = this->dirHistory.top();
+    this->dirHistory.pop();
+    //ChangeDirCommand cd = new ChangeDirCommand(cmd_line, )
   }
   return nullptr;
 }
@@ -213,6 +214,6 @@ void LsCommand::execute(){
 
 void GetCurrDirCommand::execute(){
   char * buffer = new char();
- cout << getcwd(buffer, COMMAND_ARGS_MAX_LENGTH) << "\n";
- delete [] buffer;
+  cout << getcwd(buffer, COMMAND_ARGS_MAX_LENGTH) << "\n";
+  delete [] buffer;
 }
