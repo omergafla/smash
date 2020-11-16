@@ -1,5 +1,5 @@
 #include <unistd.h>
-#include <stdio.h>
+//#include <stdio.h>
 #include <string.h>
 #include <iostream>
 #include <vector>
@@ -114,9 +114,18 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
  int result = _parseCommandLine(cmd_line, args);
 
  if(strcmp(args[0],"chprompt")==0){
-  std::string name = "smash";
-   if(result>=2) name = args[1];
-   return new ChPrompt(name);
+    std::string name = "smash";
+    if(result>=2) name = args[1];
+    delete [] args;
+    return new ChPrompt(name);
+ }
+
+ if(strcmp(args[0],"ls")==0){
+    return new LsCommand(cmd_line);
+ }
+
+ if(strcmp(args[0],"pwd") == 0 && result == 1){
+    return new GetCurrDirCommand(cmd_line);
  }
  
 
@@ -145,3 +154,12 @@ void SmallShell::ChPrompt::execute(){
 
 }
 
+void LsCommand::execute(){
+  cout << "hi \n";
+}
+
+void GetCurrDirCommand::execute(){
+  char * buffer = new char();
+ cout << getcwd(buffer, COMMAND_ARGS_MAX_LENGTH) << "\n";
+ delete [] buffer;
+}
