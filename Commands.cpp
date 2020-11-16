@@ -96,27 +96,36 @@ void ShowPidCommand::execute()
   cout << "smash pid is " << getpid() << endl;
 }
 
-ChangeDirCommand::ChangeDirCommand(const char *cmd_line, char **plastPwd)
+ChangeDirCommand::ChangeDirCommand(const char *cmd_line, string plastPwd)
 {
   char **args = new char *[COMMAND_MAX_ARGS];
   int result = _parseCommandLine(cmd_line, args);
-  if (result == 2)
+
+  if (result == 2 && strcmp(args[1], "-") == 0 && plastPwd.empty())
   {
-    if (strcmp(args[1], "-") == 0)
-    {
-      hyphen = true;
-    }
-    if (strcmp(args[1], "..") == 0)
-    {
-      string s(*plastPwd);
-      lastPwd = s;
-    }
+    this->is_error = true;
+    this->err_message = "smash error: cd: OLDPWD not set";
   }
+  else if (result > 2){
+    this->is_error = true;
+    this->err_message = "smash error: cd: too many arguments";
+  }
+  else{
+    this->is_error = false;
+    this->err_message = "";
+  }
+  //this->path(args[1]);
   delete[] args;
 }
 
 void ChangeDirCommand::execute()
 {
+  if(this->is_error == true){
+    cout << this->err_message << endl;
+  }
+  else{
+    //int result = chdir()
+  }
 }
 
 SmallShell::SmallShell()
@@ -147,39 +156,51 @@ Command *SmallShell::CreateCommand(const char *cmd_line)
   }
   */
 
-
   char **args = new char *[COMMAND_MAX_ARGS];
   int result = _parseCommandLine(cmd_line, args);
 
-
- if(strcmp(args[0],"chprompt")==0){
+  if (strcmp(args[0], "chprompt") == 0)
+  {
     std::string name = "smash";
-    if(result>=2) name = args[1];
-    delete [] args;
+    if (result >= 2)
+      name = args[1];
+    delete[] args;
     return new ChPrompt(name);
- }
+  }
 
- if(strcmp(args[0],"ls")==0){
+  if (strcmp(args[0], "ls") == 0)
+  {
+    delete[] args;
     return new LsCommand(cmd_line);
- }
+  }
 
- if(strcmp(args[0],"pwd") == 0 && result == 1){
+  if (strcmp(args[0], "pwd") == 0 && result == 1)
+  {
+    delete[] args;
     return new GetCurrDirCommand(cmd_line);
- }
-
-
-  
+  }
 
   if (strcmp(args[0], "showpid") == 0)
   {
+    delete[] args;
     return new ShowPidCommand(cmd_line);
   }
 
   if (strcmp(args[0], "cd") == 0)
   {
-    string lastPwd = this->dirHistory.top();
-    this->dirHistory.pop();
-    //ChangeDirCommand cd = new ChangeDirCommand(cmd_line, )
+    ChangeDirCommand *cd;
+    if (this->dirHistory.empty())
+    {
+      cd = new ChangeDirCommand(cmd_line, "");
+    }
+    else
+    {
+      string lastPwd = this->dirHistory.top();
+      this->dirHistory.pop();
+      cd = new ChangeDirCommand(cmd_line, lastPwd);
+    }
+    delete[] args;
+    return cd;
   }
   return nullptr;
 }
@@ -191,8 +212,12 @@ void SmallShell::executeCommand(const char *cmd_line)
   // Command* cmd = CreateCommand(cmd_line);
   // cmd->execute();
   // Please note that you must fork smash process for some commands (e.g., external commands....)
-
   Command *cmd = CreateCommand(cmd_line);
+  if (cmd == nullptr)
+  {
+    //Do something?
+    return;
+  }
   cmd->execute();
 }
 
@@ -206,14 +231,14 @@ void SmallShell::ChPrompt::execute()
   SmallShell::getInstance().changePrompt(this->newPromptName);
 }
 
-
-
-void LsCommand::execute(){
+void LsCommand::execute()
+{
   cout << "hi \n";
 }
 
-void GetCurrDirCommand::execute(){
-  char * buffer = new char();
+void GetCurrDirCommand::execute()
+{
+  char *buffer = new char();
   cout << getcwd(buffer, COMMAND_ARGS_MAX_LENGTH) << "\n";
-  delete [] buffer;
+  delete[] buffer;
 }
