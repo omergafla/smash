@@ -1,5 +1,5 @@
 #include <unistd.h>
-//#include <stdio.h>
+#include <stdio.h>
 #include <string.h>
 #include <iostream>
 #include <vector>
@@ -7,6 +7,7 @@
 #include <sys/wait.h>
 #include <iomanip>
 #include "Commands.h"
+#include <dirent.h>
 
 using namespace std;
 
@@ -140,6 +141,7 @@ void ChangeDirCommand::execute()
   }
 }
 
+
 SmallShell::SmallShell()
 {
   // TODO: add your implementation
@@ -168,9 +170,10 @@ Command *SmallShell::CreateCommand(const char *cmd_line)
   }
   */
 
+
   char **args = new char *[COMMAND_MAX_ARGS];
   int result = _parseCommandLine(cmd_line, args);
-
+  
   if (strcmp(args[0], "chprompt") == 0)
   {
     std::string name = "smash";
@@ -188,9 +191,11 @@ Command *SmallShell::CreateCommand(const char *cmd_line)
 
   if (strcmp(args[0], "pwd") == 0 && result == 1)
   {
+
     delete[] args;
     return new GetCurrDirCommand(cmd_line);
   }
+
 
   if (strcmp(args[0], "showpid") == 0)
   {
@@ -244,6 +249,7 @@ void SmallShell::executeCommand(const char *cmd_line)
     return;
   }
   cmd->execute();
+
 }
 
 SmallShell::ChPrompt::ChPrompt(std::string name)
@@ -256,14 +262,28 @@ void SmallShell::ChPrompt::execute()
   SmallShell::getInstance().changePrompt(this->newPromptName);
 }
 
+}
+
+
 void LsCommand::execute()
 {
   cout << "hi \n";
 }
 
-void GetCurrDirCommand::execute()
+
+void LsCommand::execute()
 {
-  char *buffer = new char();
+  DIR *dir;
+  struct dirent *dp;
+  char *file_name;
+  dir = opendir(".");
+  while((dp = readdir(dir)) != NULL){
+    cout << dp->d_name <<endl;
+  }
+}
+
+void GetCurrDirCommand::execute(){
+  char * buffer = new char();
   cout << getcwd(buffer, COMMAND_ARGS_MAX_LENGTH) << "\n";
   delete[] buffer;
 }
