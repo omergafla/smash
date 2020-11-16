@@ -85,6 +85,11 @@ void _removeBackgroundSign(char* cmd_line) {
 
 // TODO: Add your implementation for classes in Commands.h 
 
+void ShowPidCommand::execute(){
+    cout << "smash pid is " << getpid() << endl;
+}
+
+
 SmallShell::SmallShell() {
 // TODO: add your implementation
 }
@@ -117,6 +122,10 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
   std::string name = "smash";
    if(result>=2) name = args[1];
    return new ChPrompt(name);
+ }
+
+ if (strcmp(args[0], "showpid") == 0){
+   return new ShowPidCommand(cmd_line);
  }
  
 

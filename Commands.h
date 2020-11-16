@@ -67,7 +67,7 @@ class GetCurrDirCommand : public BuiltInCommand {
 
 class ShowPidCommand : public BuiltInCommand {
  public:
-  ShowPidCommand(const char* cmd_line);
+  ShowPidCommand(const char* cmd_line){};
   virtual ~ShowPidCommand() {}
   void execute() override;
 };
