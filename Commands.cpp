@@ -97,6 +97,32 @@ void ShowPidCommand::execute()
   cout << "smash pid is " << getpid() << endl;
 }
 
+<<<<<<< HEAD
+=======
+ChangeDirCommand::ChangeDirCommand(const char *cmd_line, char **plastPwd)
+{
+  char **args = new char *[COMMAND_MAX_ARGS];
+  int result = _parseCommandLine(cmd_line, args);
+  if (result == 2)
+  {
+    if (strcmp(args[1], "-") == 0)
+    {
+      hyphen = true;
+    }
+    if (strcmp(args[1], "..") == 0)
+    {
+      string s(*plastPwd);
+      lastPwd = s;
+    }
+  }
+  delete[] args;
+}
+
+void ChangeDirCommand::execute()
+{
+}
+
+>>>>>>> 06ad03d7fa7d292b1c853b4dff7189828af1caaa
 SmallShell::SmallShell()
 {
   // TODO: add your implementation
@@ -125,8 +151,15 @@ Command *SmallShell::CreateCommand(const char *cmd_line)
   }
   */
 
+<<<<<<< HEAD
   char **args = new char *[COMMAND_MAX_ARGS];
   int result = _parseCommandLine(cmd_line, args);
+=======
+
+  char **args = new char *[COMMAND_MAX_ARGS];
+  int result = _parseCommandLine(cmd_line, args);
+
+>>>>>>> 06ad03d7fa7d292b1c853b4dff7189828af1caaa
 
   if (strcmp(args[0], "chprompt") == 0)
   {
@@ -145,13 +178,31 @@ Command *SmallShell::CreateCommand(const char *cmd_line)
   if (strcmp(args[0], "pwd") == 0 && result == 1)
   {
     return new GetCurrDirCommand(cmd_line);
+<<<<<<< HEAD
   }
 
   if (strcmp(args[0], "showpid") == 0)
   {
     return new ShowPidCommand(cmd_line);
   }
+=======
+ }
 
+
+  
+>>>>>>> 06ad03d7fa7d292b1c853b4dff7189828af1caaa
+
+  if (strcmp(args[0], "showpid") == 0)
+  {
+    return new ShowPidCommand(cmd_line);
+  }
+
+  if (strcmp(args[0], "cd") == 0)
+  {
+    string lastPwd = this->dirHistory.top();
+    this->dirHistory.pop();
+    //ChangeDirCommand cd = new ChangeDirCommand(cmd_line, )
+  }
   return nullptr;
 }
 
@@ -165,6 +216,19 @@ void SmallShell::executeCommand(const char *cmd_line)
 
   Command *cmd = CreateCommand(cmd_line);
   cmd->execute();
+<<<<<<< HEAD
+}
+
+SmallShell::ChPrompt::ChPrompt(std::string name)
+{
+  this->newPromptName = name;
+}
+
+void SmallShell::ChPrompt::execute()
+{
+  SmallShell::getInstance().changePrompt(this->newPromptName);
+}
+=======
 }
 
 SmallShell::ChPrompt::ChPrompt(std::string name)
@@ -177,6 +241,9 @@ void SmallShell::ChPrompt::execute()
   SmallShell::getInstance().changePrompt(this->newPromptName);
 }
 
+
+>>>>>>> 06ad03d7fa7d292b1c853b4dff7189828af1caaa
+
 void LsCommand::execute()
 {
   DIR *dir;
@@ -188,9 +255,17 @@ void LsCommand::execute()
   }
 }
 
+<<<<<<< HEAD
 void GetCurrDirCommand::execute()
 {
   char *buffer = new char();
   cout << getcwd(buffer, COMMAND_ARGS_MAX_LENGTH) << "\n";
   delete[] buffer;
 }
+=======
+void GetCurrDirCommand::execute(){
+  char * buffer = new char();
+  cout << getcwd(buffer, COMMAND_ARGS_MAX_LENGTH) << "\n";
+  delete [] buffer;
+}
+>>>>>>> 06ad03d7fa7d292b1c853b4dff7189828af1caaa
