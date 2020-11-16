@@ -99,7 +99,7 @@ void ShowPidCommand::execute()
 
 
 
-ChangeDirCommand::ChangeDirCommand(const char *cmd_line, char **plastPwd)
+ChangeDirCommand::ChangeDirCommand(const char *cmd_line, string plastPwd)
 {
   char **args = new char *[COMMAND_MAX_ARGS];
   int result = _parseCommandLine(cmd_line, args);
@@ -117,7 +117,7 @@ ChangeDirCommand::ChangeDirCommand(const char *cmd_line, char **plastPwd)
     this->is_error = false;
     this->err_message = "";
   }
-  //this->path(args[1]);
+  this->path = args[1];
   delete[] args;
 }
 
@@ -127,9 +127,13 @@ void ChangeDirCommand::execute()
     cout << this->err_message << endl;
   }
   else{
-    //int result = chdir()
+    int result = chdir(path.c_str());
+    if (result == -1){
+      perror("smash error: chdir failed");
+    }
   }
 }
+
 
 
 SmallShell::SmallShell()
@@ -239,24 +243,35 @@ void SmallShell::ChPrompt::execute()
   SmallShell::getInstance().changePrompt(this->newPromptName);
 }
 
-}
+
+
 
 
 void LsCommand::execute()
 {
-  cout << "hi \n";
-}
+  // DIR *dir;
+  // struct dirent *dp;
+  // char *file_name;
+  // dir = opendir(".");
+  // while((dp = readdir(dir)) != NULL){
+  //   if ( !strcmp(dp->d_name, ".") || !strcmp(dp->d_name, "..") )
+        
+  // }
+  struct dirent **namelist;
+    int n;
+    int i = 0;
+    n = scandir(".", &namelist, NULL, alphasort);
 
-
-void LsCommand::execute()
-{
-  DIR *dir;
-  struct dirent *dp;
-  char *file_name;
-  dir = opendir(".");
-  while((dp = readdir(dir)) != NULL){
-    cout << dp->d_name <<endl;
-  }
+    if(n>0) {
+        while (i<n) {
+          char* current = namelist[i]->d_name;
+            if(strcmp(current,".") != 0 && strcmp(current,"..") != 0)
+              cout << namelist[i]->d_name <<endl;
+            free(namelist[i]);
+            i++;
+        }
+        free(namelist);
+    }
 }
 
 void GetCurrDirCommand::execute(){
