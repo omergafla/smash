@@ -83,7 +83,7 @@ class ShowPidCommand : public BuiltInCommand {
 
 
 class JobsList;
-class JobEntry;
+
 class QuitCommand : public BuiltInCommand {
 // TODO: Add your data members public:
   QuitCommand(const char* cmd_line, JobsList* jobs);
@@ -93,8 +93,7 @@ class QuitCommand : public BuiltInCommand {
 
 
 class JobsList {
- std::vector<JobEntry> jobList;
- public:
+public:
   class JobEntry {
     int job_id;
     string command;
@@ -103,7 +102,8 @@ class JobsList {
     bool stopped;
   };
  // TODO: Add your data members
- public:
+ //public:
+  std::vector<JobEntry> jobList;
   JobsList();
   ~JobsList();
   void addJob(Command* cmd, bool isStopped = false);
