@@ -11,6 +11,7 @@
 
 using namespace std;
 
+
 class Command {
 // TODO: Add your data members
  public:
@@ -56,7 +57,10 @@ class RedirectionCommand : public Command {
 };
 
 class ChangeDirCommand : public BuiltInCommand {
-// TODO: Add your data members public:
+// TODO: Add your data members 
+  bool hyphen = false;
+  //string lastPwd;
+public:
   ChangeDirCommand(const char* cmd_line, char** plastPwd);
   virtual ~ChangeDirCommand() {}
   void execute() override;
