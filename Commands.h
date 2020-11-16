@@ -1,12 +1,15 @@
 #ifndef SMASH_COMMAND_H_
 #define SMASH_COMMAND_H_
 
+#include <stdio.h>
 #include <vector>
+#include <stack>
 
 #define COMMAND_ARGS_MAX_LENGTH (200)
 #define COMMAND_MAX_ARGS (20)
 #define HISTORY_MAX_RECORDS (50)
 
+using namespace std;
 
 
 class Command {
@@ -65,7 +68,7 @@ public:
 
 class GetCurrDirCommand : public BuiltInCommand {
  public:
-  GetCurrDirCommand(const char* cmd_line);
+  GetCurrDirCommand(const char* cmd_line) {};
   virtual ~GetCurrDirCommand() {}
   void execute() override;
 };
@@ -161,19 +164,29 @@ class BackgroundCommand : public BuiltInCommand {
 // TODO: add more classes if needed 
 // maybe ls, timeout ?
 
+class LsCommand : public BuiltInCommand{
+  public:
+    LsCommand(const char* cmd_line) {};
+    virtual ~LsCommand() {}
+    void execute() override;
+    
+};
+
 
 
 
 class SmallShell {
  private:
   SmallShell();
+
  public:
-    std::string promptName = "smash";
+    string promptName = "smash";
+    stack<string> dirHistory;
     class ChPrompt : public BuiltInCommand {
     public:
       std::string newPromptName = "smash";
-      ChPrompt(const char* cmd_line);
-      ChPrompt(std::string newPromptName);
+      //ChPrompt(const char* cmd_line);
+      ChPrompt(string newPromptName);
       virtual ~ChPrompt() {}
       void execute() override;
     };
