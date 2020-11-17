@@ -104,19 +104,6 @@ void ShowPidCommand::execute()
 
 // }
 
-// JobsList::JobEntry *JobsList::getJobById(int jobId)
-// {
-//   // JobEntry* job;
-//   // auto it = this->jobList->begin();
-//   // for (it ; it != this->jobList->end(); it++)
-//   // {
-//   //   if(it->job_id == jobId){
-      
-      
-//   //   }
-//   // }
-//   // return job;
-// }
 
 ChangeDirCommand::ChangeDirCommand(const char *cmd_line, string plastPwd)
 {
@@ -161,6 +148,7 @@ void ChangeDirCommand::execute()
 SmallShell::SmallShell()
 {
   // TODO: add your implementation
+  //this->jobList = new JobsList();
 }
 
 SmallShell::~SmallShell()
@@ -171,6 +159,7 @@ SmallShell::~SmallShell()
 /**
 * Creates and returns a pointer to Command class which matches the given command line (cmd_line)
 */
+
 Command *SmallShell::CreateCommand(const char *cmd_line)
 {
   // For example:
@@ -251,19 +240,69 @@ Command *SmallShell::CreateCommand(const char *cmd_line)
     delete[] args;
     return cd;
   }
+
   return nullptr;
 }
 
 void SmallShell::executeCommand(const char *cmd_line)
 {
   Command *cmd = CreateCommand(cmd_line);
+  char **args = new char *[COMMAND_MAX_ARGS];
+  int result = _parseCommandLine(cmd_line, args);
+  bool external = true;
+  string builtins[] = {"chprompt", "ls", "showpid", "pwd", "cd", "jobs", "kill", "fg", "bg", "quit"};
+  for (int i = 0; i < 10; i++)
+  {
+    if (strcmp(args[0], builtins[i].c_str()) == 0)
+    {
+      external = false;
+      break;
+    }
+  }
+  bool bg = false;
+  if (strcmp(args[result - 1], "&") == 0)
+  {
+    bg = true;
+    args[result - 1] = NULL;
+  }
+
   if (cmd == nullptr)
   {
     //Do something?
     return;
   }
-  cmd->execute();
-  delete cmd;
+
+
+  if (external)
+  {
+
+    int status;
+    pid_t pid = fork();
+    if (pid < 0)
+      perror("negative fork");
+    else
+    {
+      if (pid == 0)
+      { //child
+        setpgrp();
+        
+        if (execvp(args[0], args) == -1)
+        {
+          perror("something went wrong");
+        }
+      }
+      else{
+        //parent
+        if(!bg){
+          waitpid(pid, &status, 0);
+        }
+      }
+    }
+  }
+  else
+  {
+    cmd->execute();
+  }
 }
 
 SmallShell::ChPrompt::ChPrompt(std::string name)

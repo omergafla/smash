@@ -11,12 +11,16 @@
 
 using namespace std;
 
-class Command
-{
-  // TODO: Add your data members
-public:
-  Command(){};
-  Command(const char *cmd_line);
+
+
+class Command {
+// TODO: Add your data members
+ public:
+ const char* cmd_line;
+ Command(){};
+  Command(const char* cmd_line){
+  };
+
   virtual ~Command(){};
   virtual void execute() = 0;
   //virtual void prepare();
@@ -32,12 +36,13 @@ public:
   virtual ~BuiltInCommand() {}
 };
 
-class ExternalCommand : public Command
-{
-public:
-  ExternalCommand(const char *cmd_line);
-  virtual ~ExternalCommand() {}
-  void execute() override;
+
+class ExternalCommand : public Command {
+ public:
+  ExternalCommand(const char* cmd_line){};
+  virtual ~ExternalCommand() {};
+  void execute() override {};
+
 };
 
 class PipeCommand : public Command
@@ -196,23 +201,25 @@ class SmallShell
 private:
   SmallShell();
 
-public:
-  string promptName = "smash";
-  string currentDirectory = ".";
-  stack<string> dirHistory;
-  class ChPrompt : public BuiltInCommand
-  {
-  public:
-    std::string newPromptName = "smash";
-    //ChPrompt(const char* cmd_line);
-    ChPrompt(string newPromptName);
-    virtual ~ChPrompt() {}
-    void execute() override;
-  };
-  Command *CreateCommand(const char *cmd_line);
-  SmallShell(SmallShell const &) = delete;     // disable copy ctor
-  void operator=(SmallShell const &) = delete; // disable = operator
-  static SmallShell &getInstance()             // make SmallShell singleton
+
+ public:
+    string promptName = "smash";
+    JobsList * jobList;
+    // string currentDirectory = ".";
+    stack<string> dirHistory;
+    class ChPrompt : public BuiltInCommand {
+    public:
+      std::string newPromptName = "smash";
+      //ChPrompt(const char* cmd_line);
+      ChPrompt(string newPromptName);
+      virtual ~ChPrompt() {}
+      void execute() override;
+    };
+  Command *CreateCommand(const char* cmd_line);
+  SmallShell(SmallShell const&)      = delete; // disable copy ctor
+  void operator=(SmallShell const&)  = delete; // disable = operator
+  static SmallShell& getInstance() // make SmallShell singleton
+
   {
     static SmallShell instance; // Guaranteed to be destroyed.
     // Instantiated on first use.
