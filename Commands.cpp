@@ -156,6 +156,7 @@ SmallShell::~SmallShell()
 /**
 * Creates and returns a pointer to Command class which matches the given command line (cmd_line)
 */
+
 Command *SmallShell::CreateCommand(const char *cmd_line)
 {
   // For example:
@@ -263,6 +264,11 @@ void SmallShell::executeCommand(const char *cmd_line)
       break;
     }
   }
+  bool bg = false;
+  if(strcmp(args[result-1], "&") == 0){
+              bg = true;
+              args[result-1] = NULL;
+    }
 
   if (cmd == nullptr)
   {
@@ -271,6 +277,7 @@ void SmallShell::executeCommand(const char *cmd_line)
   }
 
   if(external){
+
     int status;
     pid_t pid = fork();
     if(pid == 0){ //child
@@ -282,13 +289,21 @@ void SmallShell::executeCommand(const char *cmd_line)
       perror("fork failed");
     }
     else{ //parent
-      waitpid(pid, &status, 0);
+          if(!bg){
+              waitpid(pid, &status, 0);
+         }
 
     }
 
 
   }
-  cmd->execute();
+  else
+  {
+    cmd->execute();
+  }
+    
+  
+  
 }
 
 SmallShell::ChPrompt::ChPrompt(std::string name)

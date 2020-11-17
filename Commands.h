@@ -15,8 +15,10 @@ using namespace std;
 class Command {
 // TODO: Add your data members
  public:
+ const char* cmd_line;
  Command(){};
-  Command(const char* cmd_line);
+  Command(const char* cmd_line){
+  };
   virtual ~Command(){};
   virtual void execute() = 0;
   //virtual void prepare();
@@ -33,9 +35,9 @@ class BuiltInCommand : public Command {
 
 class ExternalCommand : public Command {
  public:
-  ExternalCommand(const char* cmd_line);
-  virtual ~ExternalCommand() {}
-  void execute() override;
+  ExternalCommand(const char* cmd_line){};
+  virtual ~ExternalCommand() {};
+  void execute() override {};
 };
 
 class PipeCommand : public Command {
