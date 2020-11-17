@@ -9,6 +9,7 @@
 #include "Commands.h"
 #include <dirent.h>
 
+
 using namespace std;
 
 const std::string WHITESPACE = " \n\r\t\f\v";
@@ -100,7 +101,9 @@ void ShowPidCommand::execute()
 // KillCommand::KillCommand(const char *cmd_line, JobsList* jobs){
 //   char **args = new char *[COMMAND_MAX_ARGS];
 //   int result = _parseCommandLine(cmd_line, args);
+
 // }
+
 
 ChangeDirCommand::ChangeDirCommand(const char *cmd_line, string plastPwd)
 {
@@ -232,16 +235,10 @@ Command *SmallShell::CreateCommand(const char *cmd_line)
       {
         this->dirHistory.push(curr);
       }
-      delete[] buffer;
+      delete buffer;
     }
     delete[] args;
     return cd;
-  }
-
-  else
-  {
-    delete[] args;
-    return new ExternalCommand(cmd_line);
   }
 
   return nullptr;
@@ -249,11 +246,6 @@ Command *SmallShell::CreateCommand(const char *cmd_line)
 
 void SmallShell::executeCommand(const char *cmd_line)
 {
-  // TODO: Add your implementation here
-  // for example:
-  // Command* cmd = CreateCommand(cmd_line);
-  // cmd->execute();
-  // Please note that you must fork smash process for some commands (e.g., external commands....)
   Command *cmd = CreateCommand(cmd_line);
   char **args = new char *[COMMAND_MAX_ARGS];
   int result = _parseCommandLine(cmd_line, args);
@@ -279,6 +271,7 @@ void SmallShell::executeCommand(const char *cmd_line)
     //Do something?
     return;
   }
+
 
   if (external)
   {
@@ -355,5 +348,5 @@ void GetCurrDirCommand::execute()
 {
   char *buffer = new char();
   cout << getcwd(buffer, COMMAND_ARGS_MAX_LENGTH) << "\n";
-  delete[] buffer;
+  delete buffer;
 }

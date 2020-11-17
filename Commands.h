@@ -12,6 +12,7 @@
 using namespace std;
 
 
+
 class Command {
 // TODO: Add your data members
  public:
@@ -19,6 +20,7 @@ class Command {
  Command(){};
   Command(const char* cmd_line){
   };
+
   virtual ~Command(){};
   virtual void execute() = 0;
   //virtual void prepare();
@@ -26,149 +28,179 @@ class Command {
   // TODO: Add your extra methods if needed
 };
 
-class BuiltInCommand : public Command {
- public:
- BuiltInCommand(){};
-  BuiltInCommand(const char* cmd_line);
+class BuiltInCommand : public Command
+{
+public:
+  BuiltInCommand(){};
+  BuiltInCommand(const char *cmd_line);
   virtual ~BuiltInCommand() {}
 };
+
 
 class ExternalCommand : public Command {
  public:
   ExternalCommand(const char* cmd_line){};
   virtual ~ExternalCommand() {};
   void execute() override {};
+
 };
 
-class PipeCommand : public Command {
+class PipeCommand : public Command
+{
   // TODO: Add your data members
- public:
-  PipeCommand(const char* cmd_line);
+public:
+  PipeCommand(const char *cmd_line);
   virtual ~PipeCommand() {}
   void execute() override;
 };
 
-class RedirectionCommand : public Command {
- // TODO: Add your data members
- public:
-  explicit RedirectionCommand(const char* cmd_line);
+class RedirectionCommand : public Command
+{
+  // TODO: Add your data members
+public:
+  explicit RedirectionCommand(const char *cmd_line);
   virtual ~RedirectionCommand() {}
   void execute() override;
   //void prepare() override;
   //void cleanup() override;
 };
 
-class ChangeDirCommand : public BuiltInCommand {
-// TODO: Add your data members 
+class ChangeDirCommand : public BuiltInCommand
+{
+  // TODO: Add your data members
   string err_message;
   bool is_error;
   string path;
+
 public:
-  ChangeDirCommand(const char* cmd_line, string plastPwd);
+  ChangeDirCommand(const char *cmd_line, string plastPwd);
   virtual ~ChangeDirCommand() {}
   void execute() override;
 };
 
-class GetCurrDirCommand : public BuiltInCommand {
- public:
-  GetCurrDirCommand(const char* cmd_line) {};
+class GetCurrDirCommand : public BuiltInCommand
+{
+public:
+  GetCurrDirCommand(const char *cmd_line){};
   virtual ~GetCurrDirCommand() {}
   void execute() override;
 };
 
-class ShowPidCommand : public BuiltInCommand {
- public:
-  ShowPidCommand(const char* cmd_line){};
+class ShowPidCommand : public BuiltInCommand
+{
+public:
+  ShowPidCommand(const char *cmd_line){};
   virtual ~ShowPidCommand() {}
   void execute() override;
 };
 
-
 class JobsList;
 
-class QuitCommand : public BuiltInCommand {
-// TODO: Add your data members public:
-  QuitCommand(const char* cmd_line, JobsList* jobs);
+class QuitCommand : public BuiltInCommand
+{
+  // TODO: Add your data members public:
+  QuitCommand(const char *cmd_line, JobsList *jobs);
   virtual ~QuitCommand() {}
   void execute() override;
 };
 
-
-class JobsList {
+class JobsList
+{
 public:
-  class JobEntry {
-    int job_id;
-    string command;
-    int process_id;
-    double seconds_elapsed;
-    bool stopped;
+  class JobEntry
+  {
+    public:
+      int job_id;
+      string command;
+      int process_id;
+      double seconds_elapsed;
+      bool stopped;
+      bool operator==(JobEntry &job)
+      {
+        if (job_id == job.job_id && command == job.command && 
+        process_id == job.process_id && seconds_elapsed == job.seconds_elapsed 
+        && stopped == job.stopped)
+          return true;
+        else
+          return false;
+      }
+      bool operator!=(JobEntry &job)
+      {
+        if (*this == job) return false;
+        else return true;
+      }
   };
- // TODO: Add your data members
- //public:
-  std::vector<JobEntry> jobList;
+  // TODO: Add your data members
+  //public:
+  //std::list<JobEntry> *jobList;
   JobsList();
   ~JobsList();
-  void addJob(Command* cmd, bool isStopped = false);
+  void addJob(Command *cmd, bool isStopped = false);
   void printJobsList();
   void killAllJobs();
   void removeFinishedJobs();
-  JobEntry * getJobById(int jobId);
+  JobEntry *getJobById(int jobId);
   void removeJobById(int jobId);
-  JobEntry * getLastJob(int* lastJobId);
+  JobEntry *getLastJob(int *lastJobId);
   JobEntry *getLastStoppedJob(int *jobId);
   // TODO: Add extra methods or modify exisitng ones as needed
 };
 
-class JobsCommand : public BuiltInCommand {
- // TODO: Add your data members
- public:
-  JobsCommand(const char* cmd_line, JobsList* jobs);
+class JobsCommand : public BuiltInCommand
+{
+  // TODO: Add your data members
+public:
+  JobsCommand(const char *cmd_line, JobsList *jobs);
   virtual ~JobsCommand() {}
   void execute() override;
 };
 
-class KillCommand : public BuiltInCommand {
- int pid;
- int signal;
- public:
-  KillCommand(const char* cmd_line, JobsList* jobs);
+class KillCommand : public BuiltInCommand
+{
+  int pid;
+  int job_id;
+  int signal;
+
+public:
+  KillCommand(const char *cmd_line, JobsList *jobs);
   virtual ~KillCommand() {}
   void execute() override;
 };
 
-class ForegroundCommand : public BuiltInCommand {
- // TODO: Add your data members
- public:
-  ForegroundCommand(const char* cmd_line, JobsList* jobs);
+class ForegroundCommand : public BuiltInCommand
+{
+  // TODO: Add your data members
+public:
+  ForegroundCommand(const char *cmd_line, JobsList *jobs);
   virtual ~ForegroundCommand() {}
   void execute() override;
 };
 
-class BackgroundCommand : public BuiltInCommand {
- // TODO: Add your data members
- public:
-  BackgroundCommand(const char* cmd_line, JobsList* jobs);
+class BackgroundCommand : public BuiltInCommand
+{
+  // TODO: Add your data members
+public:
+  BackgroundCommand(const char *cmd_line, JobsList *jobs);
   virtual ~BackgroundCommand() {}
   void execute() override;
 };
 
-// TODO: add more classes if needed 
+// TODO: add more classes if needed
 // maybe ls, timeout ?
 
-class LsCommand : public BuiltInCommand{
-  public:
-    LsCommand(const char* cmd_line) {};
-    virtual ~LsCommand() {}
-    void execute() override;
-    
+class LsCommand : public BuiltInCommand
+{
+public:
+  LsCommand(const char *cmd_line){};
+  virtual ~LsCommand() {}
+  void execute() override;
 };
 
-
-
-
-class SmallShell {
- private:
+class SmallShell
+{
+private:
   SmallShell();
+
 
  public:
     string promptName = "smash";
@@ -187,16 +219,18 @@ class SmallShell {
   SmallShell(SmallShell const&)      = delete; // disable copy ctor
   void operator=(SmallShell const&)  = delete; // disable = operator
   static SmallShell& getInstance() // make SmallShell singleton
+
   {
     static SmallShell instance; // Guaranteed to be destroyed.
     // Instantiated on first use.
     return instance;
   }
   ~SmallShell();
-  void changePrompt(std::string promptName){
+  void changePrompt(std::string promptName)
+  {
     this->promptName = promptName;
   }
-  void executeCommand(const char* cmd_line);
+  void executeCommand(const char *cmd_line);
   // TODO: add extra methods as needed
 };
 
