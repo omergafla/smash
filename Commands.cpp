@@ -256,14 +256,14 @@ Command *SmallShell::CreateCommand(const char *cmd_line)
 
 void SmallShell::executeCommand(const char *cmd_line)
 {
-  // Command *cmd = CreateCommand(cmd_line);
-  // if (cmd == nullptr)
-  // {
-  //   //Do something?
-  //   return;
-  // }
-  // cmd->execute();
-  // delete cmd;
+  Command *cmd = CreateCommand(cmd_line);
+  if (cmd == nullptr)
+  {
+    //Do something?
+    return;
+  }
+  cmd->execute();
+  delete cmd;
 }
 
 SmallShell::ChPrompt::ChPrompt(std::string name)
