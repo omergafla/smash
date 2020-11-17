@@ -170,7 +170,8 @@ class SmallShell {
 
  public:
     string promptName = "smash";
-    string currentDirectory = ".";
+    JobsList * jobList;
+    // string currentDirectory = ".";
     stack<string> dirHistory;
     class ChPrompt : public BuiltInCommand {
     public:
