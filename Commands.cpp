@@ -102,7 +102,6 @@ void ShowPidCommand::execute()
 //   int result = _parseCommandLine(cmd_line, args);
 // }
 
-
 ChangeDirCommand::ChangeDirCommand(const char *cmd_line, string plastPwd)
 {
   char **args = new char *[COMMAND_MAX_ARGS];
@@ -133,19 +132,20 @@ void ChangeDirCommand::execute()
   {
     cout << this->err_message << endl;
   }
-  else{
+  else
+  {
     int result = chdir(path.c_str());
-    if (result == -1){
+    if (result == -1)
+    {
       perror("smash error: chdir failed");
     }
   }
 }
 
-
-
 SmallShell::SmallShell()
 {
   // TODO: add your implementation
+  //this->jobList = new JobsList();
 }
 
 SmallShell::~SmallShell()
@@ -156,6 +156,7 @@ SmallShell::~SmallShell()
 /**
 * Creates and returns a pointer to Command class which matches the given command line (cmd_line)
 */
+
 Command *SmallShell::CreateCommand(const char *cmd_line)
 {
   // For example:
@@ -171,10 +172,9 @@ Command *SmallShell::CreateCommand(const char *cmd_line)
   }
   */
 
-
   char **args = new char *[COMMAND_MAX_ARGS];
   int result = _parseCommandLine(cmd_line, args);
-  
+
   if (strcmp(args[0], "chprompt") == 0)
   {
     std::string name = "smash";
@@ -197,7 +197,6 @@ Command *SmallShell::CreateCommand(const char *cmd_line)
     return new GetCurrDirCommand(cmd_line);
   }
 
-
   if (strcmp(args[0], "showpid") == 0)
   {
     delete[] args;
@@ -209,11 +208,14 @@ Command *SmallShell::CreateCommand(const char *cmd_line)
     ChangeDirCommand *cd;
     char *buffer = new char();
     string curr = getcwd(buffer, COMMAND_ARGS_MAX_LENGTH);
-    if (this->dirHistory.empty()){
-      if(strcmp(args[1], "-") == 0){
+    if (this->dirHistory.empty())
+    {
+      if (strcmp(args[1], "-") == 0)
+      {
         cd = new ChangeDirCommand(cmd_line, "");
       }
-      else{
+      else
+      {
         cd = new ChangeDirCommand(cmd_line, curr);
         this->dirHistory.push(curr);
       }
@@ -222,17 +224,26 @@ Command *SmallShell::CreateCommand(const char *cmd_line)
     {
       string lastPwd = this->dirHistory.top();
       cd = new ChangeDirCommand(cmd_line, lastPwd);
-      if(strcmp(args[1], "-") == 0){
+      if (strcmp(args[1], "-") == 0)
+      {
         this->dirHistory.pop();
       }
-      else{
+      else
+      {
         this->dirHistory.push(curr);
       }
       delete[] buffer;
     }
     delete[] args;
     return cd;
-    }
+  }
+
+  else
+  {
+    delete[] args;
+    return new ExternalCommand(cmd_line);
+  }
+
   return nullptr;
 }
 
@@ -244,13 +255,61 @@ void SmallShell::executeCommand(const char *cmd_line)
   // cmd->execute();
   // Please note that you must fork smash process for some commands (e.g., external commands....)
   Command *cmd = CreateCommand(cmd_line);
+  char **args = new char *[COMMAND_MAX_ARGS];
+  int result = _parseCommandLine(cmd_line, args);
+  bool external = true;
+  string builtins[] = {"chprompt", "ls", "showpid", "pwd", "cd", "jobs", "kill", "fg", "bg", "quit"};
+  for (int i = 0; i < 10; i++)
+  {
+    if (strcmp(args[0], builtins[i].c_str()) == 0)
+    {
+      external = false;
+      break;
+    }
+  }
+  bool bg = false;
+  if (strcmp(args[result - 1], "&") == 0)
+  {
+    bg = true;
+    args[result - 1] = NULL;
+  }
+
   if (cmd == nullptr)
   {
     //Do something?
     return;
   }
-  cmd->execute();
 
+  if (external)
+  {
+
+    int status;
+    pid_t pid = fork();
+    if (pid < 0)
+      perror("negative fork");
+    else
+    {
+      if (pid == 0)
+      { //child
+        setpgrp();
+        
+        if (execvp(args[0], args) == -1)
+        {
+          perror("something went wrong");
+        }
+      }
+      else{
+        //parent
+        if(!bg){
+          waitpid(pid, &status, 0);
+        }
+      }
+    }
+  }
+  else
+  {
+    cmd->execute();
+  }
 }
 
 SmallShell::ChPrompt::ChPrompt(std::string name)
@@ -263,10 +322,6 @@ void SmallShell::ChPrompt::execute()
   SmallShell::getInstance().changePrompt(this->newPromptName);
 }
 
-
-
-
-
 void LsCommand::execute()
 {
   // DIR *dir;
@@ -275,27 +330,30 @@ void LsCommand::execute()
   // dir = opendir(".");
   // while((dp = readdir(dir)) != NULL){
   //   if ( !strcmp(dp->d_name, ".") || !strcmp(dp->d_name, "..") )
-        
+
   // }
   struct dirent **namelist;
-    int n;
-    int i = 0;
-    n = scandir(".", &namelist, NULL, alphasort);
+  int n;
+  int i = 0;
+  n = scandir(".", &namelist, NULL, alphasort);
 
-    if(n>0) {
-        while (i<n) {
-          char* current = namelist[i]->d_name;
-            if(strcmp(current,".") != 0 && strcmp(current,"..") != 0)
-              cout << namelist[i]->d_name <<endl;
-            free(namelist[i]);
-            i++;
-        }
-        free(namelist);
+  if (n > 0)
+  {
+    while (i < n)
+    {
+      char *current = namelist[i]->d_name;
+      if (strcmp(current, ".") != 0 && strcmp(current, "..") != 0)
+        cout << namelist[i]->d_name << endl;
+      free(namelist[i]);
+      i++;
     }
+    free(namelist);
+  }
 }
 
-void GetCurrDirCommand::execute(){
-  char * buffer = new char();
+void GetCurrDirCommand::execute()
+{
+  char *buffer = new char();
   cout << getcwd(buffer, COMMAND_ARGS_MAX_LENGTH) << "\n";
   delete[] buffer;
 }
