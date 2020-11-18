@@ -111,10 +111,8 @@ void ShowPidCommand::execute()
 }
 
 //-------------------------JobsList----------------------------------
-JobsList::JobsList()
-{
+JobsList::JobsList(int process_id) : job_list(), processId(process_id) {}
 
-}
 JobsList::~JobsList()
 {
 }
@@ -135,7 +133,7 @@ void JobsList::addJob(Command *cmd, bool isStopped)
 
 int JobsList::getMaximalJobId()
 {
-  int max = 0;
+  int max = 1;
   auto it = this->job_list->begin();
   while (it != this->job_list->end())
   {
@@ -194,10 +192,36 @@ JobsList::JobEntry *JobsList::getJobById(int jobId)
 
 void JobsList::removeJobById(int jobId)
 {
-
+  auto it = this->job_list->begin();
+  while (it != this->job_list->end())
+  { 
+    if(it->first == jobId){
+      this->job_list->erase(it);
+    }
+  }
 }
-JobsList::JobEntry *JobsList::getLastJob(int *lastJobId) {}
-JobsList::JobEntry *JobsList::getLastStoppedJob(int *jobId) {}
+
+JobsList::JobEntry *JobsList::getLastJob(int *lastJobId) {
+  
+  JobEntry* job = new JobEntry();
+  job = getJobById(*lastJobId);
+  return job;
+}
+
+JobsList::JobEntry *JobsList::getLastStoppedJob(int *jobId) {
+  JobEntry* job = new JobEntry();
+  auto it = this->job_list->begin();
+  while (it != this->job_list->end())
+  {
+    if (it->first == *jobId && it->second->stopped == true)
+    {
+      job = it->second;
+      return job;
+    }
+    it++;
+  }
+  return nullptr;
+}
 
 //--------------------------- ChangeDirCommand ----------------------------------
 
@@ -350,6 +374,7 @@ const char **convertStringToChar(vector<string> *args)
 void SmallShell::executeCommand(const char *cmd_line)
 {
   Command *cmd = CreateCommand(cmd_line);
+  this->command = cmd;
   vector<string> *args = new vector<string>();
   char **args_char = new char *[COMMAND_MAX_ARGS];
   _parseCommandLineChar(cmd_line, args_char);
@@ -382,7 +407,6 @@ void SmallShell::executeCommand(const char *cmd_line)
 
   if (external)
   {
-
     int status;
     pid_t pid = fork();
     if (pid < 0)
