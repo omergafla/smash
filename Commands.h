@@ -12,6 +12,7 @@
 
 using namespace std;
 
+
 class Command
 {
   // TODO: Add your data members
@@ -19,7 +20,6 @@ public:
   const char *cmd_line;
   Command(){};
   Command(const char *cmd_line){};
-
   virtual ~Command(){};
   virtual void execute() = 0;
   //virtual void prepare();
