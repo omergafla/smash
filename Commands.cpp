@@ -111,18 +111,91 @@ void ShowPidCommand::execute()
 }
 
 //-------------------------JobsList----------------------------------
-JobsList::JobsList() {}
-JobsList::~JobsList() {}
-//void JobsList::addJob(Command *cmd, bool isStopped = false){}
-void JobsList::printJobsList() {}
-void JobsList::killAllJobs() {}
-void JobsList::removeFinishedJobs() {}
+JobsList::JobsList()
+{
+
+}
+JobsList::~JobsList()
+{
+}
+
+void JobsList::addJob(Command *cmd, bool isStopped)
+{
+  JobEntry *job_entry = new JobEntry();
+  vector<string> *args = new vector<string>();
+  _parseCommandLine(cmd->cmd_line, args);
+  job_entry->job_id = this->getMaximalJobId();
+  job_entry->command = args->at(0);
+  job_entry->process_id = this->processId;
+  job_entry->stopped = isStopped;
+  time(&(job_entry->insertion_time));
+  pair<int, JobEntry *> _pair = make_pair(job_entry->job_id, job_entry);
+  this->job_list->insert(_pair);
+}
+
+int JobsList::getMaximalJobId()
+{
+  int max = 0;
+  auto it = this->job_list->begin();
+  while (it != this->job_list->end())
+  {
+    if (it->first > max)
+    {
+      max = it->first;
+    }
+    it++;
+  }
+  return max;
+}
+
+void JobsList::printJobsList()
+{
+  int max = getMaximalJobId();
+  auto it = this->job_list->begin();
+  while (it != this->job_list->end())
+  { //example of command: sleep 100&
+    cout << "[" << it->second->job_id << "] " << it->second->command << " : "
+         << it->second->process_id << difftime(time(nullptr), it->second->insertion_time)
+         << " secs ";
+    if (it->second->stopped)
+    {
+      cout << "(stopped)";
+    }
+    cout << endl;
+    it++;
+  }
+}
+
+void JobsList::killAllJobs()
+{
+  auto it = this->job_list->begin();
+  while (it != this->job_list->end())
+  { 
+    kill(it->second->process_id, SIGKILL);
+  }
+}
+
+void JobsList::removeFinishedJobs()
+{
+  auto it = this->job_list->begin();
+  while (it != this->job_list->end())
+  { 
+    if(it->second->finished == true){
+      this->job_list->erase(it);
+    }
+  }
+}
+
 JobsList::JobEntry *JobsList::getJobById(int jobId)
 {
   auto it = this->job_list->find(jobId);
   return it->second;
 }
-void JobsList::removeJobById(int jobId) {}
+
+void JobsList::removeJobById(int jobId)
+{
+
+}
 JobsList::JobEntry *JobsList::getLastJob(int *lastJobId) {}
 JobsList::JobEntry *JobsList::getLastStoppedJob(int *jobId) {}
 
@@ -181,13 +254,6 @@ SmallShell::~SmallShell()
   // TODO: add your implementation
 }
 
-// void deleteArray(string* arr, int size){
-//   for(int i =0; i<size; i++){
-//     delete arr[i];
-//   }
-//   delete arr;
-// }
-
 /**
 * Creates and returns a pointer to Command class which matches the given command line (cmd_line)
 */
@@ -196,7 +262,9 @@ Command *SmallShell::CreateCommand(const char *cmd_line)
 {
   vector<string> *args = new vector<string>();
   int result = _parseCommandLine(cmd_line, args);
-
+  if(result == 0){
+    return nullptr;
+  }
   if (args->at(0) == "chprompt")
   {
     std::string name = "smash";
@@ -285,8 +353,10 @@ void SmallShell::executeCommand(const char *cmd_line)
   vector<string> *args = new vector<string>();
   char **args_char = new char *[COMMAND_MAX_ARGS];
   _parseCommandLineChar(cmd_line, args_char);
-  //args_char = convertStringToChar(args);
   int result = _parseCommandLine(cmd_line, args);
+  if(result == 0){
+    return;
+  }
   bool external = true;
   string builtins[] = {"chprompt", "ls", "showpid", "pwd", "cd", "jobs", "kill", "fg", "bg", "quit"};
   for (int i = 0; i < 10; i++)
@@ -326,6 +396,7 @@ void SmallShell::executeCommand(const char *cmd_line)
         if (execvp(args->at(0).c_str(), args_char) == -1)
         {
           perror("something went wrong");
+          kill(getpid(),SIGKILL);
         }
       }
       else

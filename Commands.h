@@ -12,16 +12,14 @@
 
 using namespace std;
 
-//it's 17:02
 
-class Command {
-// TODO: Add your data members
- public:
- const char* cmd_line;
- Command(){};
-  Command(const char* cmd_line){
-  };
-
+class Command
+{
+  // TODO: Add your data members
+public:
+  const char *cmd_line;
+  Command(){};
+  Command(const char *cmd_line){};
   virtual ~Command(){};
   virtual void execute() = 0;
   //virtual void prepare();
@@ -37,13 +35,12 @@ public:
   virtual ~BuiltInCommand() {}
 };
 
-
-class ExternalCommand : public Command {
- public:
-  ExternalCommand(const char* cmd_line){};
-  virtual ~ExternalCommand() {};
-  void execute() override {};
-
+class ExternalCommand : public Command
+{
+public:
+  ExternalCommand(const char *cmd_line){};
+  virtual ~ExternalCommand(){};
+  void execute() override{};
 };
 
 class PipeCommand : public Command
@@ -110,34 +107,38 @@ class JobsList
 public:
   class JobEntry
   {
-    public:
-      int job_id;
-      string command;
-      int process_id;
-      double seconds_elapsed;
-      bool stopped;
-      bool operator==(JobEntry &job)
-      {
-        if (job_id == job.job_id && command == job.command && 
-        process_id == job.process_id && seconds_elapsed == job.seconds_elapsed 
-        && stopped == job.stopped)
-          return true;
-        else
-          return false;
-      }
-      bool operator!=(JobEntry &job)
-      {
-        if (*this == job) return false;
-        else return true;
-      }
+  public:
+    bool finished;
+    int job_id;
+    string command;
+    int process_id;
+    time_t insertion_time;
+    bool stopped;
+    bool operator==(JobEntry &job)
+    {
+      if (job_id == job.job_id && command == job.command &&
+          process_id == job.process_id && insertion_time == job.insertion_time && stopped == job.stopped)
+        return true;
+      else
+        return false;
+    }
+    bool operator!=(JobEntry &job)
+    {
+      if (*this == job)
+        return false;
+      else
+        return true;
+    }
   };
   // TODO: Add your data members
   //public:
-  map<int, JobEntry*>* job_list;
+  map<int, JobEntry *> *job_list;
+  int processId;
   JobsList();
   ~JobsList();
   void addJob(Command *cmd, bool isStopped = false);
-  void printJobsList();
+  void printJobsList(); // When printing the "seconds_elapsed", need to print difftime(time(),insertion_time)
+  int getMaximalJobId();
   void killAllJobs();
   void removeFinishedJobs();
   JobEntry *getJobById(int jobId);
@@ -202,24 +203,25 @@ class SmallShell
 private:
   SmallShell();
 
-
- public:
-    string promptName = "smash";
-    JobsList * jobList;
-    // string currentDirectory = ".";
-    stack<string> dirHistory;
-    class ChPrompt : public BuiltInCommand {
-    public:
-      std::string newPromptName = "smash";
-      //ChPrompt(const char* cmd_line);
-      ChPrompt(string newPromptName);
-      virtual ~ChPrompt() {}
-      void execute() override;
-    };
-  Command *CreateCommand(const char* cmd_line);
-  SmallShell(SmallShell const&)      = delete; // disable copy ctor
-  void operator=(SmallShell const&)  = delete; // disable = operator
-  static SmallShell& getInstance() // make SmallShell singleton
+public:
+  string promptName = "smash";
+  JobsList *jobList;
+  // string currentDirectory = ".";
+  stack<string> dirHistory;
+  pid_t current_pid;
+  class ChPrompt : public BuiltInCommand
+  {
+  public:
+    std::string newPromptName = "smash";
+    //ChPrompt(const char* cmd_line);
+    ChPrompt(string newPromptName);
+    virtual ~ChPrompt() {}
+    void execute() override;
+  };
+  Command *CreateCommand(const char *cmd_line);
+  SmallShell(SmallShell const &) = delete;     // disable copy ctor
+  void operator=(SmallShell const &) = delete; // disable = operator
+  static SmallShell &getInstance()             // make SmallShell singleton
 
   {
     static SmallShell instance; // Guaranteed to be destroyed.
