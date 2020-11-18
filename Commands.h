@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <vector>
 #include <stack>
+#include <map>
 
 #define COMMAND_ARGS_MAX_LENGTH (200)
 #define COMMAND_MAX_ARGS (20)
@@ -132,7 +133,7 @@ public:
   };
   // TODO: Add your data members
   //public:
-  //std::list<JobEntry> *jobList;
+  map<int, JobEntry*>* job_list;
   JobsList();
   ~JobsList();
   void addJob(Command *cmd, bool isStopped = false);
