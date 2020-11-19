@@ -166,6 +166,7 @@ public:
   int getMaximalJobId();
   void killAllJobs();
   void removeFinishedJobs();
+  void setFinished(int jobId);
   JobEntry *getJobById(int jobId);
   JobEntry *getJobByProcessId(int processId);
   void removeJobById(int jobId);
@@ -201,9 +202,12 @@ public:
 class ForegroundCommand : public BuiltInCommand
 {
   // TODO: Add your data members
+  JobsList * joblist;
 public:
   ForegroundCommand(const char *cmd_line, JobsList *jobs){ 
     this->cmd_line = cmd_line;
+    this->joblist = jobs;
+
   };;
   virtual ~ForegroundCommand() {}
   void execute() override;
