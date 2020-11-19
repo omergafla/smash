@@ -246,6 +246,7 @@ void ChangeDirCommand::execute()
 SmallShell::SmallShell()
 {
   // TODO: add your implementation
+  this->current_pid = getpid();
   //this->jobList = new JobsList();
 }
 
@@ -404,7 +405,9 @@ void SmallShell::executeCommand(const char *cmd_line)
         //parent
         if (!bg)
         {
-          waitpid(pid, &status, 0);
+          this->current_pid = pid;
+          waitpid(pid, &status, WUNTRACED);
+          this->current_pid = getpid();
         }
       }
     }
