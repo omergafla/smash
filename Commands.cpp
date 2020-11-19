@@ -168,18 +168,29 @@ void JobsList::killAllJobs()
 {
   auto it = this->job_list->begin();
   while (it != this->job_list->end())
-  { 
+  {
     kill(it->second->process_id, SIGKILL);
   }
 }
 
 void JobsList::removeFinishedJobs()
 {
-  auto it = this->job_list->begin();
-  while (it != this->job_list->end())
-  { 
-    if(it->second->finished == true){
-      this->job_list->erase(it);
+  // auto it = this->job_list->begin();
+  // while (it != this->job_list->end())
+  // {
+  //   if(it->second->finished == true){
+  //     this->job_list->erase(it);
+  //   }
+  // }
+  for (auto it = this->job_list->begin(); it != this->job_list->end();)
+  {
+    if (it->second->finished == true)
+    {
+      this->job_list->erase(it++); // or "it = m.erase(it)" since C++11
+    }
+    else
+    {
+      ++it;
     }
   }
 }
@@ -194,22 +205,25 @@ void JobsList::removeJobById(int jobId)
 {
   auto it = this->job_list->begin();
   while (it != this->job_list->end())
-  { 
-    if(it->first == jobId){
+  {
+    if (it->first == jobId)
+    {
       this->job_list->erase(it);
     }
   }
 }
 
-JobsList::JobEntry *JobsList::getLastJob(int *lastJobId) {
-  
-  JobEntry* job = new JobEntry();
+JobsList::JobEntry *JobsList::getLastJob(int *lastJobId)
+{
+
+  JobEntry *job = new JobEntry();
   job = getJobById(*lastJobId);
   return job;
 }
 
-JobsList::JobEntry *JobsList::getLastStoppedJob(int *jobId) {
-  JobEntry* job = new JobEntry();
+JobsList::JobEntry *JobsList::getLastStoppedJob(int *jobId)
+{
+  JobEntry *job = new JobEntry();
   auto it = this->job_list->begin();
   while (it != this->job_list->end())
   {
@@ -286,7 +300,8 @@ Command *SmallShell::CreateCommand(const char *cmd_line)
 {
   vector<string> *args = new vector<string>();
   int result = _parseCommandLine(cmd_line, args);
-  if(result == 0){
+  if (result == 0)
+  {
     return nullptr;
   }
   if (args->at(0) == "chprompt")
@@ -379,7 +394,8 @@ void SmallShell::executeCommand(const char *cmd_line)
   char **args_char = new char *[COMMAND_MAX_ARGS];
   _parseCommandLineChar(cmd_line, args_char);
   int result = _parseCommandLine(cmd_line, args);
-  if(result == 0){
+  if (result == 0)
+  {
     return;
   }
   bool external = true;
@@ -420,7 +436,7 @@ void SmallShell::executeCommand(const char *cmd_line)
         if (execvp(args->at(0).c_str(), args_char) == -1)
         {
           perror("something went wrong");
-          kill(getpid(),SIGKILL);
+          kill(getpid(), SIGKILL);
         }
       }
       else
