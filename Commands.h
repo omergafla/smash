@@ -125,7 +125,7 @@ public:
     bool finished;
     int job_id;
     string command;
-    int process_id;
+    pid_t process_id;
     time_t insertion_time;
     bool stopped;
     bool operator==(JobEntry &job)
@@ -187,14 +187,9 @@ public:
 
 class KillCommand : public BuiltInCommand
 {
-  int pid;
-  int job_id;
-  int signal;
-
+  JobsList* job_list_ref;
 public:
-  KillCommand(const char *cmd_line, JobsList *jobs){ 
-    this->cmd_line = cmd_line;
-  };;
+  KillCommand(const char *cmd_line, JobsList *jobs);
   virtual ~KillCommand() {}
   void execute() override;
 };
