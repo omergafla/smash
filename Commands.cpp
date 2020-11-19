@@ -111,10 +111,8 @@ void ShowPidCommand::execute()
 }
 
 //-------------------------JobsList----------------------------------
-JobsList::JobsList()
-{
+JobsList::JobsList(int process_id) : job_list(), processId(process_id) {}
 
-}
 JobsList::~JobsList()
 {
 }
@@ -135,7 +133,7 @@ void JobsList::addJob(Command *cmd, bool isStopped)
 
 int JobsList::getMaximalJobId()
 {
-  int max = 0;
+  int max = 1;
   auto it = this->job_list->begin();
   while (it != this->job_list->end())
   {
@@ -170,18 +168,29 @@ void JobsList::killAllJobs()
 {
   auto it = this->job_list->begin();
   while (it != this->job_list->end())
-  { 
+  {
     kill(it->second->process_id, SIGKILL);
   }
 }
 
 void JobsList::removeFinishedJobs()
 {
-  auto it = this->job_list->begin();
-  while (it != this->job_list->end())
-  { 
-    if(it->second->finished == true){
-      this->job_list->erase(it);
+  // auto it = this->job_list->begin();
+  // while (it != this->job_list->end())
+  // {
+  //   if(it->second->finished == true){
+  //     this->job_list->erase(it);
+  //   }
+  // }
+  for (auto it = this->job_list->begin(); it != this->job_list->end();)
+  {
+    if (it->second->finished == true)
+    {
+      this->job_list->erase(it++); // or "it = m.erase(it)" since C++11
+    }
+    else
+    {
+      ++it;
     }
   }
 }
@@ -194,10 +203,39 @@ JobsList::JobEntry *JobsList::getJobById(int jobId)
 
 void JobsList::removeJobById(int jobId)
 {
-
+  auto it = this->job_list->begin();
+  while (it != this->job_list->end())
+  {
+    if (it->first == jobId)
+    {
+      this->job_list->erase(it);
+    }
+  }
 }
-JobsList::JobEntry *JobsList::getLastJob(int *lastJobId) {}
-JobsList::JobEntry *JobsList::getLastStoppedJob(int *jobId) {}
+
+JobsList::JobEntry *JobsList::getLastJob(int *lastJobId)
+{
+
+  JobEntry *job = new JobEntry();
+  job = getJobById(*lastJobId);
+  return job;
+}
+
+JobsList::JobEntry *JobsList::getLastStoppedJob(int *jobId)
+{
+  JobEntry *job = new JobEntry();
+  auto it = this->job_list->begin();
+  while (it != this->job_list->end())
+  {
+    if (it->first == *jobId && it->second->stopped == true)
+    {
+      job = it->second;
+      return job;
+    }
+    it++;
+  }
+  return nullptr;
+}
 
 //--------------------------- ChangeDirCommand ----------------------------------
 
@@ -263,7 +301,8 @@ Command *SmallShell::CreateCommand(const char *cmd_line)
 {
   vector<string> *args = new vector<string>();
   int result = _parseCommandLine(cmd_line, args);
-  if(result == 0){
+  if (result == 0)
+  {
     return nullptr;
   }
   if (args->at(0) == "chprompt")
@@ -351,11 +390,13 @@ const char **convertStringToChar(vector<string> *args)
 void SmallShell::executeCommand(const char *cmd_line)
 {
   Command *cmd = CreateCommand(cmd_line);
+  this->command = cmd;
   vector<string> *args = new vector<string>();
   char **args_char = new char *[COMMAND_MAX_ARGS];
   _parseCommandLineChar(cmd_line, args_char);
   int result = _parseCommandLine(cmd_line, args);
-  if(result == 0){
+  if (result == 0)
+  {
     return;
   }
   bool external = true;
@@ -383,7 +424,6 @@ void SmallShell::executeCommand(const char *cmd_line)
 
   if (external)
   {
-
     int status;
     pid_t pid = fork();
     if (pid < 0)
@@ -397,7 +437,7 @@ void SmallShell::executeCommand(const char *cmd_line)
         if (execvp(args->at(0).c_str(), args_char) == -1)
         {
           perror("something went wrong");
-          kill(getpid(),SIGKILL);
+          kill(getpid(), SIGKILL);
         }
       }
       else

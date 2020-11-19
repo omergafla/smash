@@ -31,14 +31,18 @@ class BuiltInCommand : public Command
 {
 public:
   BuiltInCommand(){};
-  BuiltInCommand(const char *cmd_line);
+  BuiltInCommand(const char *cmd_line){ 
+    this->cmd_line = cmd_line;
+  };
   virtual ~BuiltInCommand() {}
 };
 
 class ExternalCommand : public Command
 {
 public:
-  ExternalCommand(const char *cmd_line){};
+  ExternalCommand(const char *cmd_line){ 
+    this->cmd_line = cmd_line;
+  };;
   virtual ~ExternalCommand(){};
   void execute() override{};
 };
@@ -47,7 +51,9 @@ class PipeCommand : public Command
 {
   // TODO: Add your data members
 public:
-  PipeCommand(const char *cmd_line);
+  PipeCommand(const char *cmd_line){ 
+    this->cmd_line = cmd_line;
+  };;
   virtual ~PipeCommand() {}
   void execute() override;
 };
@@ -56,7 +62,9 @@ class RedirectionCommand : public Command
 {
   // TODO: Add your data members
 public:
-  explicit RedirectionCommand(const char *cmd_line);
+  explicit RedirectionCommand(const char *cmd_line){ 
+    this->cmd_line = cmd_line;
+  };;
   virtual ~RedirectionCommand() {}
   void execute() override;
   //void prepare() override;
@@ -71,7 +79,9 @@ class ChangeDirCommand : public BuiltInCommand
   string path;
 
 public:
-  ChangeDirCommand(const char *cmd_line, string plastPwd);
+  ChangeDirCommand(const char *cmd_line, string plastPwd){ 
+    this->cmd_line = cmd_line;
+  };;
   virtual ~ChangeDirCommand() {}
   void execute() override;
 };
@@ -79,7 +89,9 @@ public:
 class GetCurrDirCommand : public BuiltInCommand
 {
 public:
-  GetCurrDirCommand(const char *cmd_line){};
+  GetCurrDirCommand(const char *cmd_line){ 
+    this->cmd_line = cmd_line;
+  };;
   virtual ~GetCurrDirCommand() {}
   void execute() override;
 };
@@ -87,7 +99,9 @@ public:
 class ShowPidCommand : public BuiltInCommand
 {
 public:
-  ShowPidCommand(const char *cmd_line){};
+  ShowPidCommand(const char *cmd_line){ 
+    this->cmd_line = cmd_line;
+  };;
   virtual ~ShowPidCommand() {}
   void execute() override;
 };
@@ -97,11 +111,13 @@ class JobsList;
 class QuitCommand : public BuiltInCommand
 {
   // TODO: Add your data members public:
-  QuitCommand(const char *cmd_line, JobsList *jobs);
+  QuitCommand(const char *cmd_line, JobsList *jobs){ 
+    this->cmd_line = cmd_line;
+  };;
   virtual ~QuitCommand() {}
   void execute() override;
 };
-
+ 
 class JobsList
 {
 public:
@@ -129,12 +145,23 @@ public:
       else
         return true;
     }
+    void operator=(JobEntry *job)
+    {
+      this->command = job->command;
+      this->finished = job->finished;
+      this->insertion_time = job->insertion_time;
+      this->job_id = job->job_id;
+      this->process_id = job->process_id;
+      this->stopped = job->stopped;
+    }
+    
   };
   // TODO: Add your data members
   //public:
   map<int, JobEntry *> *job_list;
   int processId;
-  JobsList();
+  JobsList(){};
+  JobsList(int process_id);
   ~JobsList();
   void addJob(Command *cmd, bool isStopped = false);
   void printJobsList(); // When printing the "seconds_elapsed", need to print difftime(time(),insertion_time)
@@ -145,6 +172,7 @@ public:
   void removeJobById(int jobId);
   JobEntry *getLastJob(int *lastJobId);
   JobEntry *getLastStoppedJob(int *jobId);
+  
   // TODO: Add extra methods or modify exisitng ones as needed
 };
 
@@ -152,7 +180,9 @@ class JobsCommand : public BuiltInCommand
 {
   // TODO: Add your data members
 public:
-  JobsCommand(const char *cmd_line, JobsList *jobs);
+  JobsCommand(const char *cmd_line, JobsList *jobs){ 
+    this->cmd_line = cmd_line;
+  };;
   virtual ~JobsCommand() {}
   void execute() override;
 };
@@ -164,7 +194,9 @@ class KillCommand : public BuiltInCommand
   int signal;
 
 public:
-  KillCommand(const char *cmd_line, JobsList *jobs);
+  KillCommand(const char *cmd_line, JobsList *jobs){ 
+    this->cmd_line = cmd_line;
+  };;
   virtual ~KillCommand() {}
   void execute() override;
 };
@@ -173,7 +205,9 @@ class ForegroundCommand : public BuiltInCommand
 {
   // TODO: Add your data members
 public:
-  ForegroundCommand(const char *cmd_line, JobsList *jobs);
+  ForegroundCommand(const char *cmd_line, JobsList *jobs){ 
+    this->cmd_line = cmd_line;
+  };;
   virtual ~ForegroundCommand() {}
   void execute() override;
 };
@@ -182,7 +216,9 @@ class BackgroundCommand : public BuiltInCommand
 {
   // TODO: Add your data members
 public:
-  BackgroundCommand(const char *cmd_line, JobsList *jobs);
+  BackgroundCommand(const char *cmd_line, JobsList *jobs){ 
+    this->cmd_line = cmd_line;
+  };;
   virtual ~BackgroundCommand() {}
   void execute() override;
 };
@@ -193,7 +229,9 @@ public:
 class LsCommand : public BuiltInCommand
 {
 public:
-  LsCommand(const char *cmd_line){};
+  LsCommand(const char *cmd_line){ 
+    this->cmd_line = cmd_line;
+  };;
   virtual ~LsCommand() {}
   void execute() override;
 };
@@ -202,13 +240,13 @@ class SmallShell
 {
 private:
   SmallShell();
-
 public:
   string promptName = "smash";
   JobsList *jobList;
   // string currentDirectory = ".";
   stack<string> dirHistory;
   pid_t current_pid;
+  Command* command;
   class ChPrompt : public BuiltInCommand
   {
   public:
