@@ -241,6 +241,7 @@ JobsList::JobEntry *JobsList::getLastStoppedJob(int *jobId)
 
 ChangeDirCommand::ChangeDirCommand(const char *cmd_line, string plastPwd)
 {
+  this->cmd_line = cmd_line;
   vector<string> *args = new vector<string>();
   int result = _parseCommandLine(cmd_line, args);
   this->path = args->at(1);

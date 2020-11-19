@@ -79,9 +79,7 @@ class ChangeDirCommand : public BuiltInCommand
   string path;
 
 public:
-  ChangeDirCommand(const char *cmd_line, string plastPwd){ 
-    this->cmd_line = cmd_line;
-  };;
+  ChangeDirCommand(const char *cmd_line, string plastPwd);
   virtual ~ChangeDirCommand() {}
   void execute() override;
 };
