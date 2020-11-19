@@ -75,13 +75,11 @@ class ChangeDirCommand : public BuiltInCommand
 {
   // TODO: Add your data members
   string err_message;
-  bool is_error;
+  bool is_error = false;
   string path;
 
 public:
-  ChangeDirCommand(const char *cmd_line, string plastPwd){ 
-    this->cmd_line = cmd_line;
-  };;
+  ChangeDirCommand(const char *cmd_line, string plastPwd);
   virtual ~ChangeDirCommand() {}
   void execute() override;
 };
@@ -91,7 +89,7 @@ class GetCurrDirCommand : public BuiltInCommand
 public:
   GetCurrDirCommand(const char *cmd_line){ 
     this->cmd_line = cmd_line;
-  };;
+  };
   virtual ~GetCurrDirCommand() {}
   void execute() override;
 };
@@ -101,7 +99,7 @@ class ShowPidCommand : public BuiltInCommand
 public:
   ShowPidCommand(const char *cmd_line){ 
     this->cmd_line = cmd_line;
-  };;
+  };
   virtual ~ShowPidCommand() {}
   void execute() override;
 };
@@ -113,7 +111,7 @@ class QuitCommand : public BuiltInCommand
   // TODO: Add your data members public:
   QuitCommand(const char *cmd_line, JobsList *jobs){ 
     this->cmd_line = cmd_line;
-  };;
+  };
   virtual ~QuitCommand() {}
   void execute() override;
 };
@@ -154,21 +152,22 @@ public:
       this->process_id = job->process_id;
       this->stopped = job->stopped;
     }
-    
   };
   // TODO: Add your data members
   //public:
   map<int, JobEntry *> *job_list;
-  int processId;
-  JobsList(){};
-  JobsList(int process_id);
+  JobsList(){
+    job_list = new map<int, JobEntry*>();
+  };
+  //JobsList(int process_id);
   ~JobsList();
-  void addJob(Command *cmd, bool isStopped = false);
-  void printJobsList(); // When printing the "seconds_elapsed", need to print difftime(time(),insertion_time)
+  void addJob(Command *cmd, pid_t processId, bool isStopped = false);
+  void printJobsList(); 
   int getMaximalJobId();
   void killAllJobs();
   void removeFinishedJobs();
   JobEntry *getJobById(int jobId);
+  JobEntry *getJobByProcessId(int processId);
   void removeJobById(int jobId);
   JobEntry *getLastJob(int *lastJobId);
   JobEntry *getLastStoppedJob(int *jobId);
@@ -178,11 +177,9 @@ public:
 
 class JobsCommand : public BuiltInCommand
 {
-  // TODO: Add your data members
+  JobsList* job_list_ref;
 public:
-  JobsCommand(const char *cmd_line, JobsList *jobs){ 
-    this->cmd_line = cmd_line;
-  };;
+  JobsCommand(const char *cmd_line, JobsList *jobs);
   virtual ~JobsCommand() {}
   void execute() override;
 };
@@ -243,8 +240,8 @@ private:
 public:
   string promptName = "smash";
   JobsList *jobList;
-  // string currentDirectory = ".";
-  stack<string> dirHistory;
+  string previousDirectory = "";
+  //stack<string> dirHistory;
   pid_t current_pid;
   Command* command;
   class ChPrompt : public BuiltInCommand

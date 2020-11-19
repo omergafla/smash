@@ -111,24 +111,31 @@ void ShowPidCommand::execute()
 }
 
 //-------------------------JobsList----------------------------------
-JobsList::JobsList(int process_id) : job_list(), processId(process_id) {}
 
 JobsList::~JobsList()
 {
 }
 
-void JobsList::addJob(Command *cmd, bool isStopped)
+void JobsList::addJob(Command *cmd, pid_t pid, bool isStopped)
 {
   JobEntry *job_entry = new JobEntry();
-  vector<string> *args = new vector<string>();
-  _parseCommandLine(cmd->cmd_line, args);
-  job_entry->job_id = this->getMaximalJobId();
-  job_entry->command = args->at(0);
-  job_entry->process_id = this->processId;
-  job_entry->stopped = isStopped;
-  time(&(job_entry->insertion_time));
-  pair<int, JobEntry *> _pair = make_pair(job_entry->job_id, job_entry);
-  this->job_list->insert(_pair);
+  JobEntry *temp = getJobByProcessId(pid);
+  if (temp == nullptr)
+  {
+    vector<string> *args = new vector<string>();
+    _parseCommandLine(cmd->cmd_line, args);
+    job_entry->job_id = this->getMaximalJobId() + 1;
+    job_entry->command = cmd->cmd_line;
+    job_entry->insertion_time = time(NULL);
+    job_entry->process_id = pid;
+    job_entry->stopped = isStopped;
+    pair<int, JobEntry *> _pair = make_pair(job_entry->job_id, job_entry);
+    this->job_list->insert(_pair);
+  }
+  else{
+    temp->insertion_time = time(NULL);
+    delete job_entry;
+  }
 }
 
 int JobsList::getMaximalJobId()
@@ -148,12 +155,11 @@ int JobsList::getMaximalJobId()
 
 void JobsList::printJobsList()
 {
-  int max = getMaximalJobId();
   auto it = this->job_list->begin();
   while (it != this->job_list->end())
   { //example of command: sleep 100&
     cout << "[" << it->second->job_id << "] " << it->second->command << " : "
-         << it->second->process_id << difftime(time(nullptr), it->second->insertion_time)
+         << it->second->process_id << " "<< difftime(time(nullptr), it->second->insertion_time)
          << " secs ";
     if (it->second->stopped)
     {
@@ -186,7 +192,7 @@ void JobsList::removeFinishedJobs()
   {
     if (it->second->finished == true)
     {
-      this->job_list->erase(it++); // or "it = m.erase(it)" since C++11
+      this->job_list->erase(it++);
     }
     else
     {
@@ -213,17 +219,31 @@ void JobsList::removeJobById(int jobId)
   }
 }
 
+JobsList::JobEntry *JobsList::getJobByProcessId(int processId)
+{
+  auto it = this->job_list->begin();
+  while (it != this->job_list->end())
+  {
+    if (it->second->process_id == processId)
+    {
+      return it->second;
+    }
+    it++;
+  }
+  return nullptr;
+}
+
 JobsList::JobEntry *JobsList::getLastJob(int *lastJobId)
 {
 
-  JobEntry *job = new JobEntry();
+  JobEntry *job;
   job = getJobById(*lastJobId);
   return job;
 }
 
 JobsList::JobEntry *JobsList::getLastStoppedJob(int *jobId)
 {
-  JobEntry *job = new JobEntry();
+  JobEntry *job;
   auto it = this->job_list->begin();
   while (it != this->job_list->end())
   {
@@ -237,10 +257,41 @@ JobsList::JobEntry *JobsList::getLastStoppedJob(int *jobId)
   return nullptr;
 }
 
+//----------------------------JobsCommand----------------------------------------
+
+JobsCommand::JobsCommand(const char *cmd_line, JobsList *jobs)
+{
+  this->cmd_line = cmd_line;
+  this->job_list_ref = jobs;
+}
+
+void JobsCommand::execute()
+{
+  bool is_exited;
+  bool is_stopped;
+  bool is_continued;
+  int status = -1;
+  pid_t returned_pid;
+  auto it = this->job_list_ref->job_list->begin();
+  while (it != this->job_list_ref->job_list->end())
+  {
+    returned_pid = waitpid(it->second->process_id, &status, WCONTINUED | WUNTRACED | WNOHANG);
+    is_exited = WIFEXITED(status);
+    if (is_exited)
+    {
+      it->second->finished = true;
+    }
+    it++;
+  }
+  this->job_list_ref->removeFinishedJobs();
+  this->job_list_ref->printJobsList();
+}
+
 //--------------------------- ChangeDirCommand ----------------------------------
 
 ChangeDirCommand::ChangeDirCommand(const char *cmd_line, string plastPwd)
 {
+  this->cmd_line = cmd_line;
   vector<string> *args = new vector<string>();
   int result = _parseCommandLine(cmd_line, args);
   this->path = args->at(1);
@@ -259,7 +310,6 @@ ChangeDirCommand::ChangeDirCommand(const char *cmd_line, string plastPwd)
   {
     this->path = plastPwd;
   }
-
   delete args;
 }
 
@@ -283,9 +333,8 @@ void ChangeDirCommand::execute()
 
 SmallShell::SmallShell()
 {
-  // TODO: add your implementation
   this->current_pid = getpid();
-  //this->jobList = new JobsList();
+  this->jobList = new JobsList();
 }
 
 SmallShell::~SmallShell()
@@ -333,12 +382,21 @@ Command *SmallShell::CreateCommand(const char *cmd_line)
     return new ShowPidCommand(cmd_line);
   }
 
+
+  if (args->at(0) == "jobs")
+  {
+    delete args;
+    return new JobsCommand(cmd_line, this->jobList);
+  }
+
+
+///Get back to this function - not sure this works
   if (args->at(0) == "cd")
   {
     ChangeDirCommand *cd;
     char *buffer = new char[1024];
     string curr = getcwd(buffer, COMMAND_ARGS_MAX_LENGTH);
-    if (this->dirHistory.empty())
+    if (this->previousDirectory.empty())
     {
       if (args->at(1) == "-")
       {
@@ -347,20 +405,16 @@ Command *SmallShell::CreateCommand(const char *cmd_line)
       else
       {
         cd = new ChangeDirCommand(cmd_line, curr);
-        this->dirHistory.push(curr);
+        this->previousDirectory = curr;
       }
     }
     else
     {
-      string lastPwd = this->dirHistory.top();
-      cd = new ChangeDirCommand(cmd_line, lastPwd);
+      //string lastPwd = this->dirHistory.top();
+      cd = new ChangeDirCommand(cmd_line, this->previousDirectory);
       if (args->at(1) == "-")
       {
-        this->dirHistory.pop();
-      }
-      else
-      {
-        this->dirHistory.push(curr);
+        this->previousDirectory = curr;
       }
     }
     delete buffer;
@@ -415,13 +469,6 @@ void SmallShell::executeCommand(const char *cmd_line)
     bg = true;
     args_char[result - 1] = NULL;
   }
-
-  if (cmd == nullptr)
-  {
-    //Do something?
-    return;
-  }
-
   if (external)
   {
     int status;
@@ -433,7 +480,6 @@ void SmallShell::executeCommand(const char *cmd_line)
       if (pid == 0)
       { //child
         setpgrp();
-
         if (execvp(args->at(0).c_str(), args_char) == -1)
         {
           perror("something went wrong");
@@ -448,6 +494,10 @@ void SmallShell::executeCommand(const char *cmd_line)
           this->current_pid = pid;
           waitpid(pid, &status, WUNTRACED);
           this->current_pid = getpid();
+        }
+        else
+        {
+          this->jobList->addJob(cmd, pid);
         }
       }
     }
