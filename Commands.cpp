@@ -132,7 +132,8 @@ void JobsList::addJob(Command *cmd, pid_t pid, bool isStopped)
     pair<int, JobEntry *> _pair = make_pair(job_entry->job_id, job_entry);
     this->job_list->insert(_pair);
   }
-  else{
+  else
+  {
     temp->insertion_time = time(NULL);
     delete job_entry;
   }
@@ -140,7 +141,7 @@ void JobsList::addJob(Command *cmd, pid_t pid, bool isStopped)
 
 int JobsList::getMaximalJobId()
 {
-  int max = 1;
+  int max = 0;
   auto it = this->job_list->begin();
   while (it != this->job_list->end())
   {
@@ -159,7 +160,7 @@ void JobsList::printJobsList()
   while (it != this->job_list->end())
   { //example of command: sleep 100&
     cout << "[" << it->second->job_id << "] " << it->second->command << " : "
-         << it->second->process_id << " "<< difftime(time(nullptr), it->second->insertion_time)
+         << it->second->process_id << " " << difftime(time(nullptr), it->second->insertion_time)
          << " secs ";
     if (it->second->stopped)
     {
@@ -204,6 +205,10 @@ void JobsList::removeFinishedJobs()
 JobsList::JobEntry *JobsList::getJobById(int jobId)
 {
   auto it = this->job_list->find(jobId);
+  if (it == this->job_list->end())
+  {
+    return nullptr;
+  }
   return it->second;
 }
 
@@ -277,9 +282,17 @@ void JobsCommand::execute()
   {
     returned_pid = waitpid(it->second->process_id, &status, WCONTINUED | WUNTRACED | WNOHANG);
     is_exited = WIFEXITED(status);
+    is_stopped = WIFSTOPPED(status);
+    is_continued = WIFCONTINUED(status);
     if (is_exited)
     {
       it->second->finished = true;
+    }
+    if(is_continued){
+      it->second->stopped = false;
+    }
+    if(is_stopped){
+      it->second->stopped = true;
     }
     it++;
   }
@@ -328,7 +341,54 @@ void ChangeDirCommand::execute()
     }
   }
 }
+//------------------------------- KillCommand ---------------------------------------------------
 
+KillCommand::KillCommand(const char *cmd_line, JobsList *jobs)
+{
+  job_list_ref = jobs;
+  this->cmd_line = cmd_line;
+}
+
+void KillCommand::execute()
+{
+  int job_id;
+  int signum;
+  vector<string> *args = new vector<string>();
+  int result = _parseCommandLine(this->cmd_line, args);
+  try //If no conversion could be performed
+  {
+    job_id = stoi(args->at(2));
+    signum = stoi(args->at(1));
+  }
+  catch (invalid_argument)
+  {
+    cout << "smash error: kill: invalid arguments" << endl;
+    return;
+  }
+  // If sig_num is not negative
+  if (args->at(1).at(0) != '-')
+  {
+    cout << "smash error: kill: invalid arguments"<< endl;
+    return;
+  }
+  JobsList::JobEntry *job = this->job_list_ref->getJobById(job_id);
+  //If job_id doesn't exist in the job_list
+  if (job == nullptr)
+  {
+    cout << "smash error: kill: job-id " << job_id << " does not exist" << endl;
+    return;
+  }
+  pid_t pid = this->job_list_ref->getJobById(job_id)->process_id;
+  int res = kill(pid, abs(signum));
+  if (res == -1)
+  {
+    perror("smash error: kill failed");
+  }
+  else
+  {
+    cout << "signal number " << abs(signum) << " was sent to pid " << pid << endl;
+  }
+}
 //------------------------------- SmallShell ----------------------------------------------------
 
 SmallShell::SmallShell()
@@ -382,15 +442,18 @@ Command *SmallShell::CreateCommand(const char *cmd_line)
     return new ShowPidCommand(cmd_line);
   }
 
-
   if (args->at(0) == "jobs")
   {
     delete args;
     return new JobsCommand(cmd_line, this->jobList);
   }
 
+  if (args->at(0) == "kill")
+  {
+    delete args;
+    return new KillCommand(cmd_line, this->jobList);
+  }
 
-///Get back to this function - not sure this works
   if (args->at(0) == "cd")
   {
     ChangeDirCommand *cd;
