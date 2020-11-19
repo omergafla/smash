@@ -120,6 +120,7 @@ void JobsList::addJob(Command *cmd, pid_t pid, bool isStopped)
 {
   JobEntry *job_entry = new JobEntry();
   JobEntry *temp = getJobByProcessId(pid);
+  
   if (temp == nullptr)
   {
     vector<string> *args = new vector<string>();
@@ -134,6 +135,7 @@ void JobsList::addJob(Command *cmd, pid_t pid, bool isStopped)
   }
   else{
     temp->insertion_time = time(NULL);
+    temp->stopped = isStopped;
     delete job_entry;
   }
 }
@@ -177,6 +179,10 @@ void JobsList::killAllJobs()
   {
     kill(it->second->process_id, SIGKILL);
   }
+}
+
+void JobsList::setFinished(int jobId){
+  this->getJobById(jobId)->finished = true;
 }
 
 void JobsList::removeFinishedJobs()
@@ -389,6 +395,11 @@ Command *SmallShell::CreateCommand(const char *cmd_line)
     return new JobsCommand(cmd_line, this->jobList);
   }
 
+  if(args->at(0) == "fg"){
+    delete args;
+    return new ForegroundCommand(cmd_line, this->jobList);
+  }
+
 
 ///Get back to this function - not sure this works
   if (args->at(0) == "cd")
@@ -459,6 +470,9 @@ void SmallShell::executeCommand(const char *cmd_line)
   {
     if (args->at(0) == builtins[i])
     {
+      if(args->at(0) == "fg"){
+        this->current_pid = getpid();
+      }
       external = false;
       break;
     }
@@ -545,6 +559,34 @@ void LsCommand::execute()
     }
     free(namelist);
   }
+}
+
+void ForegroundCommand::execute(){
+  vector<string> *args = new vector<string>();
+    int result = _parseCommandLine(this->cmd_line, args);
+    int job_id = -1;
+    if(result == 1){
+      job_id = this->joblist->getMaximalJobId();
+    }
+    else{
+      job_id = stoi(args->at(1));
+    }
+
+  //int process_id = this->joblist->getJobById(job_id)->process_id;
+  JobsList::JobEntry * job_entry = this->joblist->getJobById(job_id);
+  int process_id = job_entry->process_id;
+  kill(process_id, SIGCONT);
+  SmallShell::getInstance().current_pid = process_id;
+  int status;
+  waitpid(process_id, &status, WUNTRACED);
+  bool is_exited = WIFEXITED(status);
+    if (is_exited)
+    {
+      //it->second->finished = true;
+      this->joblist->setFinished(job_id);
+      SmallShell::getInstance().current_pid = getpid();
+    }
+
 }
 
 void GetCurrDirCommand::execute()
