@@ -646,8 +646,13 @@ void ForegroundCommand::execute(){
         cout << "smash error: fg: invalid arguments" << endl;
         return;
       }
-      
-      job_id = stoi(args->at(1));
+      try{
+          job_id = stoi(args->at(1));
+      }
+      catch(invalid_argument){
+        cout << "smash error: fg: invalid arguments" << endl;
+        return;
+      }
     }
   
   //int process_id = this->joblist->getJobById(job_id)->process_id;
