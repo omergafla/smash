@@ -164,6 +164,7 @@ public:
   void addJob(Command *cmd, pid_t processId, bool isStopped = false);
   void printJobsList(); 
   int getMaximalJobId();
+  bool isEmpty();
   void killAllJobs();
   void removeFinishedJobs();
   void setFinished(int jobId);
