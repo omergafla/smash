@@ -166,6 +166,7 @@ public:
     map<int, JobEntry *> *job_list;
     JobsList()
     {
+
         job_list = new map<int, JobEntry *>();
     };
     //JobsList(int process_id);
@@ -175,6 +176,7 @@ public:
     void printJobsListForQuit();
     int getMaximalJobId();
     void killAllJobs();
+    bool isEmpty();
     void removeFinishedJobs();
     void setFinished(int jobId);
     JobEntry *getJobById(int jobId);
@@ -182,8 +184,6 @@ public:
     void removeJobById(int jobId);
     JobEntry *getLastJob(int *lastJobId);
     JobEntry *getLastStoppedJob(int *jobId);
-
-    // TODO: Add extra methods or modify exisitng ones as needed
 };
 
 class JobsCommand : public BuiltInCommand

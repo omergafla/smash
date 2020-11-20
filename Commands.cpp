@@ -719,28 +719,52 @@ void LsCommand::execute()
     }
 }
 
-void ForegroundCommand::execute()
-{
-    vector<string> *args = new vector<string>();
+
+
+
+bool JobsList::isEmpty(){
+  return this->job_list->empty();
+}
+
+void ForegroundCommand::execute(){
+  vector<string> *args = new vector<string>();
     int result = _parseCommandLine(this->cmd_line, args);
     int job_id = -1;
-    if (result == 1)
-    {
-        job_id = this->joblist->getMaximalJobId();
+    if(result == 1){
+      if(this->joblist->isEmpty()){
+        cout << "smash error: fg: jobs list is empty" << endl;
+        return;
+      }
+      job_id = this->joblist->getMaximalJobId();
     }
-    else
-    {
-        job_id = stoi(args->at(1));
+    else{
+      if(result>2){
+        cout << "smash error: fg: invalid arguments" << endl;
+        return;
+      }
+      try{
+          job_id = stoi(args->at(1));
+      }
+      catch(invalid_argument){
+        cout << "smash error: fg: invalid arguments" << endl;
+        return;
+      }
     }
+  
+  //int process_id = this->joblist->getJobById(job_id)->process_id;
+  JobsList::JobEntry * job_entry = this->joblist->getJobById(job_id);
+  if (job_entry == nullptr)
+  {
+    cout << "smash error: fg: job-id " << job_id << " does not exist" << endl;
+    return;
+  }
+  int process_id = job_entry->process_id;
+  kill(process_id, SIGCONT);
+  SmallShell::getInstance().current_pid = process_id;
+  int status;
+  waitpid(process_id, &status, WUNTRACED);
+  bool is_exited = WIFEXITED(status);
 
-    //int process_id = this->joblist->getJobById(job_id)->process_id;
-    JobsList::JobEntry *job_entry = this->joblist->getJobById(job_id);
-    int process_id = job_entry->process_id;
-    kill(process_id, SIGCONT);
-    SmallShell::getInstance().current_pid = process_id;
-    int status;
-    waitpid(process_id, &status, WUNTRACED);
-    bool is_exited = WIFEXITED(status);
     if (is_exited)
     {
         //it->second->finished = true;
