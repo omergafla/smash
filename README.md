@@ -1,7 +1,7 @@
 # smash
 234123 - Operating Systems - HW1 - building small shell, C++11
 
-Built In Commands:
+<h3> Built In Commands: </h3>
 
 <ol>
   <li>PWD</li>
@@ -9,5 +9,6 @@ Built In Commands:
   <li>Chprompt</li>
   <li>CD</li>
   <li>FG</li>
+  <li>BG</li>
   <li>Kill</li>
   </ol>
