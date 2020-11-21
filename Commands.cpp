@@ -8,6 +8,9 @@
 #include <iomanip>
 #include "Commands.h"
 #include <dirent.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 using namespace std;
 
@@ -448,6 +451,81 @@ void QuitCommand::execute()
 
 #pragma endregion
 
+#pragma region
+
+RedirectionCommand::RedirectionCommand(const char *cmd_line)
+{
+    this->cmd_line = cmd_line;
+}
+
+void deleteLastCellsOfArray(char **args_char, int res)
+{
+    int flag = 0;
+    for (int i = 0; i < res; i++)
+    {
+        if (flag == 1)
+        {
+            args_char[i] = NULL;
+            continue;
+        }
+        if (strcmp(args_char[i], ">") == 0 || strcmp(args_char[i], ">>") == 0)
+        {
+            flag = 1;
+            args_char[i] = NULL;
+        }
+    }
+}
+
+void RedirectionCommand::execute()
+{
+    char **args_char = new char *[COMMAND_MAX_ARGS];
+    int res = _parseCommandLineChar(cmd_line, args_char);
+    int fd;
+    //Definitely a Built-in command
+    //Deal with no spaces around > or >> : as in date>temp.txt, becuase in real shell it works.
+    SmallShell &smash = SmallShell::getInstance();
+    Command *cmd = smash.CreateCommand(this->cmd_line);
+    pid_t pid = fork();
+    if (pid == 0)
+    {
+        //close(1);
+        if (smash.append)
+            fd = open(args_char[2], O_CREAT | O_APPEND | O_WRONLY, 0666);
+        else
+            fd = open(args_char[2], O_TRUNC | O_WRONLY | O_CREAT, 0666);
+        dup2(fd, 1);
+        close(fd);
+        if (smash.external)
+        {
+            setpgrp();
+            deleteLastCellsOfArray(args_char, res);
+            if (execvp(args_char[0], args_char) == -1)
+            {
+                perror("something went wrong");
+                for (int i = 0; i < COMMAND_MAX_ARGS; i++)
+                {
+                    free(args_char[i]);
+                }
+                delete[] args_char;
+                kill(getpid(), SIGKILL);
+            }
+        }
+        else
+            cmd->execute();
+    }
+    else
+    {
+        waitpid(pid, NULL,WUNTRACED);
+    }
+    for (int i = 0; i < COMMAND_MAX_ARGS; i++)
+    {
+        free(args_char[i]);
+    }
+    delete[] args_char;
+}
+
+#pragma endregion
+
 //------------------------------- SmallShell ----------------------------------------------------
 
 SmallShell::SmallShell()
@@ -561,6 +639,12 @@ Command *SmallShell::CreateCommand(const char *cmd_line)
         return cd;
     }
 
+    if (result == 3 && (args->at(1) == ">" || args->at(1) == ">>"))
+    {
+        delete args;
+        return new RedirectionCommand(cmd_line);
+    }
+
     else
     {
         delete args;
@@ -598,7 +682,7 @@ void SmallShell::executeCommand(const char *cmd_line)
         delete[] args_char;
         return;
     }
-    bool external = true;
+    //bool external = true;
     string builtins[] = {"chprompt", "ls", "showpid", "pwd", "cd", "jobs", "kill", "fg", "bg", "quit"};
     for (int i = 0; i < 10; i++)
     {
@@ -612,6 +696,19 @@ void SmallShell::executeCommand(const char *cmd_line)
             break;
         }
     }
+
+    if (result == 3)
+    {
+        if (args->at(1) == ">>")
+        {
+            redirection = true;
+            append = true;
+        }
+        if (args->at(1) == ">")
+        {
+            redirection = true;
+        }
+    }
     bool bg = false;
     string argument = args->at(result - 1);
     if (argument.at(argument.size() - 1) == '&')
@@ -621,14 +718,19 @@ void SmallShell::executeCommand(const char *cmd_line)
         char *temp = args_char[result - 1];
 
         char *new_word = new char[argument.size() - 1];
-        for (i = 0; i < argument.size() - 1 ; i++)
+        for (i = 0; i < argument.size() - 1; i++)
         {
             new_word[i] = temp[i];
         }
         new_word[i] = '\0';
         args_char[result - 1] = new_word;
     }
-    if (external)
+
+    if ((!external) || redirection)
+    {
+        cmd->execute();
+    }
+    else
     {
         int status;
         pid_t pid = fork();
@@ -652,8 +754,7 @@ void SmallShell::executeCommand(const char *cmd_line)
                 }
             }
             else
-            {
-                //parent
+            { //parent
                 if (!bg)
                 {
                     this->current_pid = pid;
@@ -667,10 +768,7 @@ void SmallShell::executeCommand(const char *cmd_line)
             }
         }
     }
-    else
-    {
-        cmd->execute();
-    }
+
     delete args;
     for (int i = 0; i < COMMAND_MAX_ARGS; i++)
     {
@@ -719,51 +817,56 @@ void LsCommand::execute()
     }
 }
 
-
-
-
-bool JobsList::isEmpty(){
-  return this->job_list->empty();
+bool JobsList::isEmpty()
+{
+    return this->job_list->empty();
 }
 
-void ForegroundCommand::execute(){
-  vector<string> *args = new vector<string>();
+void ForegroundCommand::execute()
+{
+    vector<string> *args = new vector<string>();
     int result = _parseCommandLine(this->cmd_line, args);
     int job_id = -1;
-    if(result == 1){
-      if(this->joblist->isEmpty()){
-        cout << "smash error: fg: jobs list is empty" << endl;
-        return;
-      }
-      job_id = this->joblist->getMaximalJobId();
+    if (result == 1)
+    {
+        if (this->joblist->isEmpty())
+        {
+            cout << "smash error: fg: jobs list is empty" << endl;
+            return;
+        }
+        job_id = this->joblist->getMaximalJobId();
     }
-    else{
-      if(result>2){
-        cout << "smash error: fg: invalid arguments" << endl;
-        return;
-      }
-      try{
-          job_id = stoi(args->at(1));
-      }
-      catch(invalid_argument){
-        cout << "smash error: fg: invalid arguments" << endl;
-        return;
-      }
+    else
+    {
+        if (result > 2)
+        {
+            cout << "smash error: fg: invalid arguments" << endl;
+            return;
+        }
+        try
+        {
+            job_id = stoi(args->at(1));
+        }
+        catch (invalid_argument)
+        {
+            cout << "smash error: fg: invalid arguments" << endl;
+            return;
+        }
     }
-  
-  //int process_id = this->joblist->getJobById(job_id)->process_id;
-  JobsList::JobEntry * job_entry = this->joblist->getJobById(job_id);
-  if (job_entry == nullptr)
-  {
-    cout << "smash error: fg: job-id " << job_id << " does not exist" << endl;
-    return;
-  }
-  int process_id = job_entry->process_id;
-  kill(process_id, SIGCONT);
-  SmallShell::getInstance().current_pid = process_id;
-  int status;
-  waitpid(process_id, &status, WUNTRACED);
-  bool is_exited = WIFEXITED(status);
+
+    //int process_id = this->joblist->getJobById(job_id)->process_id;
+    JobsList::JobEntry *job_entry = this->joblist->getJobById(job_id);
+    if (job_entry == nullptr)
+    {
+        cout << "smash error: fg: job-id " << job_id << " does not exist" << endl;
+        return;
+    }
+    int process_id = job_entry->process_id;
+    kill(process_id, SIGCONT);
+    SmallShell::getInstance().current_pid = process_id;
+    int status;
+    waitpid(process_id, &status, WUNTRACED);
+    bool is_exited = WIFEXITED(status);
 
     if (is_exited)
     {
