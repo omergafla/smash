@@ -39,13 +39,15 @@ public:
 
 class ExternalCommand : public Command
 {
+    pid_t pid;
+
 public:
     ExternalCommand(const char *cmd_line)
     {
         this->cmd_line = cmd_line;
     };
     virtual ~ExternalCommand(){};
-    void execute() override{};
+    void execute();
 };
 
 class PipeCommand : public Command
@@ -265,6 +267,8 @@ public:
     bool redirection = false;
     bool append = false;
     bool external = true;
+    bool background = false;
+    bool forked = false;
 
     Command *CreateCommand(const char *cmd_line);
     SmallShell(SmallShell const &) = delete;     // disable copy ctor
