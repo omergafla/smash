@@ -319,7 +319,7 @@ void JobsCommand::execute()
     is_exited = WIFEXITED(status);
     is_stopped = WIFSTOPPED(status);
     is_continued = WIFCONTINUED(status);
-    if (is_exited)
+    if (is_exited || returned_pid == -1)
     {
       it->second->finished = true;
     }
@@ -784,6 +784,7 @@ void ForegroundCommand::execute()
     return;
   }
   int process_id = job_entry->process_id;
+  cout <<job_entry->command <<" : " <<job_entry->process_id <<endl;
   kill(process_id, SIGCONT);
   SmallShell::getInstance().current_pid = process_id;
   int status;
