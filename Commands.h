@@ -169,6 +169,7 @@ public:
     void printJobsList();
     void printJobsListForQuit();
     int getMaximalJobId();
+    int getMaximalStoppedJobId();
     void killAllJobs();
     bool isEmpty();
     void removeFinishedJobs();
@@ -219,10 +220,12 @@ public:
 class BackgroundCommand : public BuiltInCommand
 {
     // TODO: Add your data members
+    JobsList * joblist;
 public:
     BackgroundCommand(const char *cmd_line, JobsList *jobs)
     {
         this->cmd_line = cmd_line;
+        this->joblist = jobs;
     };
 
     virtual ~BackgroundCommand() {}
@@ -287,5 +290,7 @@ public:
     void executeCommand(const char *cmd_line);
     // TODO: add extra methods as needed
 };
+
+
 
 #endif //SMASH_COMMAND_H_

@@ -309,7 +309,7 @@ void JobsCommand::execute()
         is_exited = WIFEXITED(status);
         is_stopped = WIFSTOPPED(status);
         is_continued = WIFCONTINUED(status);
-        if (is_exited)
+        if (is_exited || returned_pid < 0)
         {
             it->second->finished = true;
         }
@@ -595,6 +595,12 @@ Command *SmallShell::CreateCommand(const char *cmd_line)
         return new ForegroundCommand(cmd_line, this->jobList);
     }
 
+    if (args->at(0) == "bg")
+    {
+        delete args;
+        return new BackgroundCommand(cmd_line, this->jobList);
+    }
+
     if (args->at(0) == "cd")
     {
         ChangeDirCommand *cd;
@@ -755,8 +761,11 @@ void ExternalCommand::execute()
 {
     pid_t pid;
     SmallShell &smash = SmallShell::getInstance();
+    vector<string> *args = new vector<string>();
     char **args_char = new char *[COMMAND_MAX_ARGS];
-    int result = _parseCommandLineChar(cmd_line, args_char);
+    _parseCommandLineChar(cmd_line, args_char);
+    int result = _parseCommandLine(cmd_line, args);
+    CheckBackground(args, args_char);
     int status;
     pid = fork();
     if (pid < 0)
@@ -766,6 +775,7 @@ void ExternalCommand::execute()
         if (pid == 0) //child
         {
             setpgrp();
+            
             if (execvp(args_char[0], args_char) == -1)
             {
                 perror("something went wrong");
@@ -781,7 +791,6 @@ void ExternalCommand::execute()
         { //parent
             if (!smash.background)
             {
-                cout << "getpid = " << getpid() << ", currentpid = " << smash.current_pid << ", pid = " << pid << endl;
                 smash.current_pid = pid;
                 pid_t temp = waitpid(pid, &status, WUNTRACED);
                 smash.current_pid = getpid();
@@ -835,7 +844,7 @@ void LsCommand::execute()
 
 bool JobsList::isEmpty()
 {
-    return this->job_list->empty();
+    return this->job_list->size() == 0;
 }
 
 void ForegroundCommand::execute()
@@ -897,4 +906,76 @@ void GetCurrDirCommand::execute()
     char *buffer = new char[1024];
     cout << getcwd(buffer, COMMAND_ARGS_MAX_LENGTH) << "\n";
     delete[] buffer;
+}
+
+
+void BackgroundCommand::execute()
+{
+  vector<string> *args = new vector<string>();
+  int result = _parseCommandLine(this->cmd_line, args);
+  int job_id = -1;
+  if (result == 1)
+  {
+    if (this->joblist->isEmpty())
+    {
+      cout << "smash error: bg: there is no stopped jobs to resume" << endl;
+      return;
+    }
+    job_id = this->joblist->getMaximalStoppedJobId();
+    if(job_id == 0){
+       cout << "smash error: bg: there is no stopped jobs to resume" << endl;
+        return;
+    }
+  }
+  else
+  {
+    if (result > 2)
+    {
+      cout << "smash error: bg: invalid arguments" << endl;
+      return;
+    }
+    try
+    {
+      job_id = stoi(args->at(1));
+    }
+    catch (invalid_argument)
+    {
+      cout << "smash error: bg: invalid arguments" << endl;
+      return;
+    }
+  }
+  if(result == 1) job_id = this->joblist->getMaximalStoppedJobId();
+  else job_id = stoi(args->at(1));
+  //int process_id = this->joblist->getJobById(job_id)->process_id;
+  JobsList::JobEntry *job_entry = this->joblist->getJobById(job_id);
+  if (job_entry == nullptr)
+  {
+    cout << "smash error: bg: job-id " << job_id << " does not exist" << endl;
+    return;
+  }
+  if(!this->joblist->getJobById(job_id)->stopped){
+    cout << "smash error: bg: job-id " << job_id << " is already running in the background" << endl;
+    return;
+  }
+
+  int process_id = job_entry->process_id;
+  cout <<job_entry->command <<" : " <<job_entry->process_id <<endl;
+  kill(process_id, SIGCONT);
+  job_entry->stopped = false;
+  
+}
+
+int JobsList::getMaximalStoppedJobId()
+{
+  int max = 0;
+  auto it = this->job_list->begin();
+  while (it != this->job_list->end())
+  {
+    if (it->first > max && it->second->stopped)
+    {
+      max = it->first;
+    }
+    it++;
+  }
+  return max;
 }
