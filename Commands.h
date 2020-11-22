@@ -34,43 +34,37 @@ public:
     {
         this->cmd_line = cmd_line;
     };
-    virtual ~BuiltInCommand() {};
+    virtual ~BuiltInCommand(){};
 };
 
 class ExternalCommand : public Command
 {
+    pid_t pid;
+
 public:
     ExternalCommand(const char *cmd_line)
     {
         this->cmd_line = cmd_line;
     };
     virtual ~ExternalCommand(){};
-    void execute() override{};
+    void execute();
 };
 
 class PipeCommand : public Command
 {
     // TODO: Add your data members
 public:
-    PipeCommand(const char *cmd_line)
-    {
-        this->cmd_line = cmd_line;
-    };
-    ;
-    virtual ~PipeCommand() {};
+    PipeCommand(const char *cmd_line);
+    virtual ~PipeCommand(){};
     void execute() override;
 };
 
 class RedirectionCommand : public Command
 {
-    // TODO: Add your data members
+
 public:
-    explicit RedirectionCommand(const char *cmd_line)
-    {
-        this->cmd_line = cmd_line;
-    };
-    ;
-    virtual ~RedirectionCommand() {};
+    explicit RedirectionCommand(const char *cmd_line);
+    virtual ~RedirectionCommand(){};
     void execute() override;
     //void prepare() override;
     //void cleanup() override;
@@ -85,7 +79,7 @@ class ChangeDirCommand : public BuiltInCommand
 
 public:
     ChangeDirCommand(const char *cmd_line, string plastPwd);
-    virtual ~ChangeDirCommand() {};
+    virtual ~ChangeDirCommand(){};
     void execute() override;
 };
 
@@ -96,7 +90,7 @@ public:
     {
         this->cmd_line = cmd_line;
     };
-    virtual ~GetCurrDirCommand() {};
+    virtual ~GetCurrDirCommand(){};
     void execute() override;
 };
 
@@ -107,7 +101,7 @@ public:
     {
         this->cmd_line = cmd_line;
     };
-    virtual ~ShowPidCommand() {};
+    virtual ~ShowPidCommand(){};
     void execute() override;
 };
 
@@ -120,7 +114,7 @@ public:
     bool if_kill;
 
     QuitCommand(const char *cmd_line, JobsList *jobs, bool kill);
-    virtual ~QuitCommand() {};
+    virtual ~QuitCommand(){};
     void execute() override;
 };
 
@@ -193,7 +187,7 @@ class JobsCommand : public BuiltInCommand
 
 public:
     JobsCommand(const char *cmd_line, JobsList *jobs);
-    virtual ~JobsCommand() {};
+    virtual ~JobsCommand(){};
     void execute() override;
 };
 
@@ -218,7 +212,7 @@ public:
         this->cmd_line = cmd_line;
         this->joblist = jobs;
     };
-    
+
     virtual ~ForegroundCommand() {}
     void execute() override;
 };
@@ -234,7 +228,7 @@ public:
         this->cmd_line = cmd_line;
         this->joblist = jobs;
     };
-    
+
     virtual ~BackgroundCommand() {}
     void execute() override;
 };
@@ -271,10 +265,15 @@ public:
     string promptName = "smash";
     JobsList *jobList;
     string previousDirectory = "";
-    //stack<string> dirHistory;
     pid_t current_pid;
     Command *command;
     bool alive;
+    bool redirection = false;
+    bool append = false;
+    bool external = true;
+    bool background = false;
+    bool forked = false;
+
     Command *CreateCommand(const char *cmd_line);
     SmallShell(SmallShell const &) = delete;     // disable copy ctor
     void operator=(SmallShell const &) = delete; // disable = operator
