@@ -26,7 +26,6 @@ void ctrlCHandler(int sig_num) {
   if(pid != getpid()){
     kill(pid, SIGKILL);
     cout << "process " << pid << " was killed" <<endl;
-    
   }
 
   
