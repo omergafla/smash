@@ -113,7 +113,7 @@ void _removeBackgroundSign(char *cmd_line)
 
 void ShowPidCommand::execute()
 {
-    cout << "smash pid is " << getpid() << endl;
+    cout << "smash pid is " << SmallShell::getInstance().smash_pid << endl;
 }
 
 #pragma region JobsList
@@ -454,7 +454,7 @@ void QuitCommand::execute()
 
 #pragma endregion
 
-#pragma region
+#pragma region Redirection
 
 RedirectionCommand::RedirectionCommand(const char *cmd_line)
 {
@@ -479,28 +479,50 @@ void deleteLastCellsOfArray(char **args_char, int res)
     }
 }
 
+void remove_spaces(char *s)
+{
+    const char *d = s;
+    do
+    {
+        while (*d == ' ')
+        {
+            ++d;
+        }
+    } while (*s++ = *d++);
+}
+
 void RedirectionCommand::execute()
 {
     SmallShell &smash = SmallShell::getInstance();
+    string str(this->cmd_line);
     int savestdout;
+    char *no_space_name = new char[str.size()];
+    const char *name = new char[str.size()];
     char **args_char = new char *[COMMAND_MAX_ARGS];
     int res = _parseCommandLineChar(cmd_line, args_char);
     int fd;
-    string str(this->cmd_line);
+    int pos;
     if (smash.append)
     {
-        str = str.substr(0, str.find(">>"));
+        pos = str.find(">>");
+        name = (str.substr(pos + 2)).c_str();
+        str = str.substr(0, pos);
     }
     else
     {
-        str = str.substr(0, str.find(">"));
+        pos = str.find(">");
+        name = (str.substr(pos + 1)).c_str();
+        str = str.substr(0, pos);
+        //strcpy(name, str.substr(pos + 1).c_str());
     }
+    strcpy(no_space_name, name);
+    remove_spaces(no_space_name);
     //Deal with no spaces around > or >> : as in date>temp.txt, becuase in real shell it works.
     Command *cmd = smash.CreateCommand(str.c_str());
     if (smash.append)
-        fd = open(args_char[2], O_CREAT | O_APPEND | O_WRONLY, 0666);
+        fd = open(no_space_name, O_CREAT | O_APPEND | O_WRONLY, 0666);
     else
-        fd = open(args_char[2], O_TRUNC | O_WRONLY | O_CREAT, 0666);
+        fd = open(no_space_name, O_CREAT | O_TRUNC | O_WRONLY, 0666);
     savestdout = dup(STDOUT_FILENO);
     dup2(fd, STDOUT_FILENO);
     close(fd);
@@ -514,6 +536,123 @@ void RedirectionCommand::execute()
 
 #pragma endregion
 
+#pragma region PipeCommand
+
+bool CheckBackground(const char *command)
+{
+    bool bg = false;
+    string argument(command);
+    if (argument.at(argument.size() - 1) == '&')
+        return true;
+    else
+        return false;
+}
+
+PipeCommand::PipeCommand(const char *cmd_line)
+{
+    vector<string> *args = new vector<string>();
+    int result = _parseCommandLine(cmd_line, args);
+    this->cmd_line = cmd_line;
+    if (std::count(args->begin(), args->end(), "|&") != 0)
+    {
+        this->is_amper = true;
+    }
+    else
+        this->is_amper = false;
+}
+
+string prepare(string str)
+{
+    int pos = str.find_last_of("&");
+    str = str.substr(0, pos);
+    str = _trim(str);
+    str = str + "&";
+}
+
+void PipeCommand::execute()
+{
+    bool bg_pipe = false;
+    SmallShell &smash = SmallShell::getInstance();
+    Command *cmd1, *cmd2;
+    string cmd1_name, cmd2_name;
+    string str(this->cmd_line);
+    string str = prepare(str);
+    int pos = str.find("|");
+    cmd1_name = str.substr(0, pos);
+    if (this->is_amper)
+    {
+        cmd2_name = _trim(str.substr(pos + 2));
+    }
+    else
+    {
+        cmd2_name = _trim(str.substr(pos + 1));
+    }
+
+    //cmd1_name = _trim(cmd1_name);
+    //cmd2_name = _trim(cmd2_name);
+
+    if (CheckBackground(cmd2_name.c_str()))
+        bg_pipe = true;
+    cmd1 = smash.CreateCommand(cmd1_name.c_str());
+    cmd2 = smash.CreateCommand(cmd2_name.c_str());
+
+    smash.forked = true;
+    pid_t pipe_pid = fork();
+    if (pipe_pid == 0)
+    {
+        setpgrp();
+        int mypipe[2];
+        pipe(mypipe);
+
+        pid_t pid_command1 = fork();
+        if (pid_command1 == 0)
+        {
+            if (this->is_amper)
+            {
+                dup2(mypipe[1], STDOUT_FILENO);
+            }
+            else
+            {
+                dup2(mypipe[1], STDERR_FILENO);
+            }
+            close(mypipe[0]);
+            close(mypipe[1]);
+            cmd1->execute();
+            kill(getpid(), SIGKILL);
+        }
+        pid_t pid_command2 = fork();
+        if (pid_command2 == 0)
+        {
+            if (this->is_amper)
+            {
+                dup2(mypipe[0], STDIN_FILENO);
+            }
+            else
+            {
+                dup2(mypipe[0], STDERR_FILENO);
+            }
+            close(mypipe[0]);
+            close(mypipe[1]);
+            cmd2->execute();
+            kill(getpid(), SIGKILL);
+        }
+        close(mypipe[1]);
+        close(mypipe[0]);
+
+        waitpid(pid_command1, NULL, WUNTRACED);
+        waitpid(pid_command2, NULL, WUNTRACED);
+        kill(getpid(), SIGKILL);
+    }
+    else
+    { // Smash here
+        if (!bg_pipe)
+            waitpid(pipe_pid, NULL, WUNTRACED);
+        else
+            smash.jobList->addJob(this, pipe_pid);
+    }
+}
+
+#pragma endregion
 //------------------------------- SmallShell ----------------------------------------------------
 
 SmallShell::SmallShell()
@@ -521,6 +660,7 @@ SmallShell::SmallShell()
     this->current_pid = getpid();
     this->jobList = new JobsList();
     this->alive = true;
+    this->smash_pid = getpid();
 }
 
 SmallShell::~SmallShell()
@@ -544,6 +684,12 @@ Command *SmallShell::CreateCommand(const char *cmd_line)
     {
         delete args;
         return new RedirectionCommand(cmd_line);
+    }
+
+    if (std::count(args->begin(), args->end(), "|") != 0 || std::count(args->begin(), args->end(), "|&") != 0)
+    {
+        delete args;
+        return new PipeCommand(cmd_line);
     }
 
     if (args->at(0) == "chprompt")
@@ -723,6 +869,7 @@ void setToDefault()
     smash.external = true;
     smash.background = false;
     smash.forked = false;
+    smash.piped = false;
 }
 
 void SmallShell::executeCommand(const char *cmd_line)
@@ -736,10 +883,10 @@ void SmallShell::executeCommand(const char *cmd_line)
     if (result == 0)
     {
         delete args;
-        for (int i = 0; i < COMMAND_MAX_ARGS; i++)
-        {
-            free(args_char[i]);
-        }
+        // for (int i = 0; i < COMMAND_MAX_ARGS; i++)
+        // {
+        //     free(args_char[i]);
+        // }
         delete[] args_char;
         return;
     }
@@ -757,6 +904,7 @@ void SmallShell::executeCommand(const char *cmd_line)
     // }
     delete[] args_char;
     delete cmd;
+
     setToDefault();
 }
 
@@ -777,8 +925,8 @@ void ExternalCommand::execute()
     {
         if (pid == 0) //child
         {
-            setpgrp();
-
+            if (!smash.forked)
+                setpgrp();
             if (execvp(args_char[0], args_char) == -1)
             {
                 perror("something went wrong");
@@ -795,12 +943,16 @@ void ExternalCommand::execute()
             if (!smash.background)
             {
                 smash.current_pid = pid;
-                pid_t temp = waitpid(pid, &status, WUNTRACED);
+                waitpid(pid, &status, WUNTRACED);
                 smash.current_pid = getpid();
             }
             else
             {
                 smash.jobList->addJob(this, pid);
+            }
+            if (smash.forked)
+            {
+                kill(getpid(), SIGKILL);
             }
         }
     }
@@ -813,6 +965,7 @@ ChPrompt::ChPrompt(string name)
 
 void ChPrompt::execute()
 {
+    pid_t pid = getpid();
     SmallShell::getInstance().changePrompt(this->newPromptName);
 }
 

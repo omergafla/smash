@@ -36,7 +36,6 @@ public:
     };
     virtual ~BuiltInCommand(){};
 };
-
 class ExternalCommand : public Command
 {
     pid_t pid;
@@ -52,7 +51,7 @@ public:
 
 class PipeCommand : public Command
 {
-    // TODO: Add your data members
+    bool is_amper;
 public:
     PipeCommand(const char *cmd_line);
     virtual ~PipeCommand(){};
@@ -265,6 +264,7 @@ public:
     JobsList *jobList;
     string previousDirectory = "";
     pid_t current_pid;
+    pid_t smash_pid;
     Command *command;
     bool alive;
     bool redirection = false;
@@ -272,6 +272,7 @@ public:
     bool external = true;
     bool background = false;
     bool forked = false;
+    bool piped = false;
 
     Command *CreateCommand(const char *cmd_line);
     SmallShell(SmallShell const &) = delete;     // disable copy ctor
