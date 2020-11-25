@@ -269,9 +269,11 @@ public:
 class CpCommand : public BuiltInCommand
 {
 public:
-    // CpCommand(const char* cmd_line);
-    // virtual ~CpCommand(){};
-    // void CpCommand() override;
+    string source;
+    string destination;
+    CpCommand(const char *cmd_line);
+    virtual ~CpCommand(){};
+    void execute() override;
 };
 
 class TimedList

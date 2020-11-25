@@ -12,6 +12,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <algorithm>
+#include <sys/stat.h>
 
 // chen123
 
@@ -30,6 +31,7 @@ const std::string WHITESPACE = " \n\r\t\f\v";
 #define FUNC_EXIT()
 #endif
 
+#define BUFFER_SIZE 4096
 #define DEBUG_PRINT cerr << "DEBUG: "
 
 #define EXEC(path, arg) \
@@ -212,7 +214,8 @@ void JobsList::removeFinishedJobs()
 {
     for (auto it = this->job_list->begin(); it != this->job_list->end();)
     {
-        if (it->second->finished == true)
+        // if (it->second->finished == true)
+        if (waitpid(it->second->process_id, NULL, WNOHANG) != 0)
         {
             this->job_list->erase(it++);
         }
@@ -248,7 +251,6 @@ void JobsList::removeJobById(int jobId)
         }
     }
 }
-
 
 void JobsList::removeJobByProcessIdid(int processId)
 {
@@ -535,13 +537,26 @@ void RedirectionCommand::execute()
         fd = open(no_space_name, O_CREAT | O_APPEND | O_WRONLY, 0666);
     else
         fd = open(no_space_name, O_CREAT | O_TRUNC | O_WRONLY, 0666);
+    if (fd == -1)
+    {
+        perror("smash error: open failed");
+    }
     savestdout = dup(STDOUT_FILENO);
     dup2(fd, STDOUT_FILENO);
-    close(fd);
+    if (close(fd) == -1)
+    {
+        perror("smash error: close failed");
+    };
     cmd->execute();
-    close(STDOUT_FILENO);
+    if (close(STDOUT_FILENO))
+    {
+        perror("smash error: close failed");
+    }
     dup2(savestdout, STDOUT_FILENO);
-    close(savestdout);
+    if (close(savestdout) == -1)
+    {
+        perror("smash error: close failed");
+    }
     smash.append = false;
     //cout << "Hi"<< endl;
 }
@@ -619,6 +634,11 @@ void PipeCommand::execute()
     }
     smash.forked = true;
     pid_t pipe_pid = fork();
+    if (pipe_pid == -1)
+    {
+        perror("smash error: fork faild");
+        exit(0);
+    }
     if (pipe_pid == 0)
     {
         setpgrp();
@@ -626,45 +646,93 @@ void PipeCommand::execute()
         pipe(mypipe);
 
         pid_t pid_command1 = fork();
+        if (pid_command1 == -1)
+        {
+            perror("smash error: fork faild");
+            exit(0);
+        }
         if (pid_command1 == 0)
         {
             if (this->is_amper)
             {
-                dup2(mypipe[1], STDERR_FILENO);
+                if (dup2(mypipe[1], STDERR_FILENO) == -1)
+                {
+                    perror("smash error: dup2 failed");
+                }
             }
             else
             {
-                dup2(mypipe[1], STDOUT_FILENO);
+                if (dup2(mypipe[1], STDOUT_FILENO) == -1)
+                {
+                    perror("smash error: dup2 failed");
+                }
             }
-            close(mypipe[0]);
-            close(mypipe[1]);
+            if (close(mypipe[0]) == -1)
+            {
+
+                perror("smash error: close failed");
+            }
+            if (close(mypipe[1]) == -1)
+            {
+
+                perror("smash error: close failed");
+            }
             cmd1->execute();
             //kill(getpid(), SIGKILL);
             exit(0);
         }
 
         pid_t pid_command2 = fork();
+        if (pid_command2 == -1)
+        {
+            perror("smash error: fork faild");
+            exit(0);
+        }
         if (pid_command2 == 0)
         {
             if (this->is_amper)
             {
-                dup2(mypipe[0], STDERR_FILENO);
+                if (dup2(mypipe[0], STDERR_FILENO) == -1)
+                {
+                    perror("smash error: dup2 failed");
+                }
             }
             else
             {
-                dup2(mypipe[0], STDIN_FILENO);
+                if (dup2(mypipe[0], STDIN_FILENO) == -1)
+                {
+                    perror("smash error: dup2 failed");
+                }
             }
-            close(mypipe[0]);
-            close(mypipe[1]);
+            if (close(mypipe[0]) == -1)
+            {
+                perror("smash error: close failed");
+            }
+            if (close(mypipe[1]) == -1)
+            {
+                perror("smash error: close failed");
+            }
             cmd2->execute();
             //kill(getpid(), SIGKILL);
             exit(0);
         }
 
-        close(mypipe[1]);
-        close(mypipe[0]);
-        waitpid(pid_command1, NULL, WUNTRACED);
-        waitpid(pid_command2, NULL, WUNTRACED);
+        if (close(mypipe[0]) == -1)
+        {
+            perror("smash error: close failed");
+        }
+        if (close(mypipe[1]) == -1)
+        {
+            perror("smash error: close failed");
+        }
+        if (waitpid(pid_command1, NULL, WUNTRACED) == -1)
+        {
+            perror("smash error: waitpaid failed");
+        }
+        if (waitpid(pid_command2, NULL, WUNTRACED) == -1)
+        {
+            perror("smash error: waitpaid failed");
+        }
         //kill(getpid(), SIGKILL);
         //cout << "pipe pid2 :" << getpid() << endl;
         exit(0);
@@ -674,9 +742,12 @@ void PipeCommand::execute()
     { // Smash here
         //cout << "smash pid waiting for pipe :" << getpid() << endl;
         if (!bg_pipe)
-            waitpid(pipe_pid, NULL, WUNTRACED);
-        else
-            smash.jobList->addJob(this, pipe_pid);
+            if (waitpid(pipe_pid, NULL, WUNTRACED) == -1)
+            {
+                perror("smash error: waitpaid failed");
+            }
+            else
+                smash.jobList->addJob(this, pipe_pid);
     }
 }
 
@@ -728,6 +799,13 @@ Command *SmallShell::CreateCommand(const char *cmd_line)
         delete args;
         return new TimeoutCommand(cmd_line);
     }
+
+    if (args->at(0) == "cp")
+    {
+        delete args;
+        return new CpCommand(cmd_line);
+    }
+
     if (args->at(0) == "chprompt")
     {
         std::string name = "smash";
@@ -991,7 +1069,7 @@ void ExternalCommand::execute()
     pid = fork();
     if (pid < 0)
     {
-        perror("negative fork");
+        perror("smash error: fork failed");
     }
     else
     {
@@ -1002,7 +1080,6 @@ void ExternalCommand::execute()
 
             if (smash.timeout)
             {
-                //timeout 10 sleep 15
                 string s;
                 std::vector<std::string>::const_iterator i = args->begin();
                 i++;
@@ -1012,9 +1089,6 @@ void ExternalCommand::execute()
                 const char *cmd_line_temp = s.c_str();
                 strcpy(cmd_copy, cmd_line_temp);
                 arguments_for_execv[2] = cmd_copy;
-                // delete[] args_char;
-                // args_char = new char *[COMMAND_MAX_ARGS];
-                // _parseCommandLineChar(cmd_line, args_char);
             }
 
             if (execvp("/bin/bash", arguments_for_execv) == -1)
@@ -1257,5 +1331,66 @@ void TimeoutCommand::execute()
 }
 
 #pragma region CopyCommand
+
+CpCommand::CpCommand(const char *cmd_line)
+{
+    this->cmd_line = cmd_line;
+    vector<string> *args = new vector<string>();
+    _parseCommandLine(cmd_line, args);
+    this->source = args->at(1);
+    this->destination = args->at(2);
+    delete args;
+}
+
+void CpCommand::execute()
+{
+    int content, wrote;
+    pid_t copy_pid = fork();
+    if (copy_pid == -1)
+    {
+        perror("smash error: fork failed");
+    }
+    if (copy_pid == 0)
+    {
+        int fd_read = open(this->source.c_str(), O_RDONLY, 0666);
+        int fd_write = open(this->destination.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0666);
+        if (fd_read == -1 || fd_write == -1)
+        {
+            perror("smash error: open failed");
+            exit(0);
+        }
+        // struct stat st;
+        // fstat(fd_read, &st);
+        // size_t size = st.st_size;
+        char buffer[BUFFER_SIZE];
+        while ((content = read(fd_read, buffer, BUFFER_SIZE)) > 0)
+        {
+            if ((wrote = write(fd_write, buffer, BUFFER_SIZE)) != content)
+            {
+                perror("smash error: write failed");
+                break;
+            }
+            if (content != -1)
+            {
+                perror("smash error: read failed");
+                break;
+            }
+        }
+        if (close(fd_read) == -1)
+        {
+            perror("smash error: close failed");
+        }
+        if (close(fd_write) == -1)
+        {
+            perror("smash error: close failed");
+        }
+        exit(0);
+    }
+    else
+    {
+        waitpid(copy_pid, NULL, WUNTRACED);
+    }
+    //Background
+}
 
 #pragma endregion
