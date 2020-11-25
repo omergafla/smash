@@ -31,6 +31,7 @@ void ctrlCHandler(int sig_num)
     kill(pid, SIGKILL);
     cout << "process " << pid << " was killed" << endl;
   }
+
 }
 
 void alarmHandler(int sig_num) {
@@ -44,10 +45,6 @@ void alarmHandler(int sig_num) {
         break;
       }
       bool flag =it != smash.timedList->timed_list->end();
-      // cout << it->first <<endl;
-      // time_t t1 = time(nullptr);
-      // time_t t2 = it->second->timestamp;
-      // time_t t3 = t2+ it->second->duration;
       int dif = difftime(time(nullptr), it->second->timestamp+it->second->duration);
       bool time_diff = (dif >= 0);
       
@@ -55,14 +52,7 @@ void alarmHandler(int sig_num) {
         {
           int pid = it->first;
             kill(it->first, SIGKILL);
-            //cout << "smash: " << it->second->command << " timed out! ###pid: " << it->first << endl;
             smash.jobList->removeJobByProcessIdid(it->first);
-
-            // if(smash.background){
-
-            // }
-            
-
         }
         ++it;
     }
