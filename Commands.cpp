@@ -109,11 +109,9 @@ void _removeBackgroundSign(char *cmd_line)
     cmd_line[str.find_last_not_of(WHITESPACE, idx) + 1] = 0;
 }
 
-// TODO: Add your implementation for classes in Commands.h
-
 void ShowPidCommand::execute()
 {
-    cout << "smash pid is " << getpid() << endl;
+    cout << "smash pid is " << SmallShell::getInstance().smash_pid << endl;
 }
 
 #pragma region JobsList
@@ -240,10 +238,24 @@ void JobsList::removeJobById(int jobId)
     auto it = this->job_list->begin();
     while (it != this->job_list->end())
     {
+        if (this->isEmpty())
+        {
+            break;
+        }
         if (it->first == jobId)
         {
             this->job_list->erase(it);
         }
+    }
+}
+
+
+void JobsList::removeJobByProcessIdid(int processId)
+{
+    JobEntry *entry = this->getJobByProcessId(processId);
+    if (entry != nullptr)
+    {
+        this->removeJobById(entry->job_id);
     }
 }
 
@@ -310,7 +322,7 @@ void JobsCommand::execute()
         is_exited = WIFEXITED(status);
         is_stopped = WIFSTOPPED(status);
         is_continued = WIFCONTINUED(status);
-        if (is_exited || returned_pid < 0)
+        if (is_exited)
         {
             it->second->finished = true;
         }
@@ -454,7 +466,7 @@ void QuitCommand::execute()
 
 #pragma endregion
 
-#pragma region
+#pragma region RedirectionCommand
 
 RedirectionCommand::RedirectionCommand(const char *cmd_line)
 {
@@ -479,28 +491,50 @@ void deleteLastCellsOfArray(char **args_char, int res)
     }
 }
 
+void remove_spaces(char *s)
+{
+    const char *d = s;
+    do
+    {
+        while (*d == ' ')
+        {
+            ++d;
+        }
+    } while (*s++ = *d++);
+}
+
 void RedirectionCommand::execute()
 {
     SmallShell &smash = SmallShell::getInstance();
+    string str(this->cmd_line);
     int savestdout;
+    char *no_space_name = new char[str.size()];
+    const char *name = new char[str.size()];
     char **args_char = new char *[COMMAND_MAX_ARGS];
     int res = _parseCommandLineChar(cmd_line, args_char);
     int fd;
-    string str(this->cmd_line);
+    int pos;
     if (smash.append)
     {
-        str = str.substr(0, str.find(">>"));
+        pos = str.find(">>");
+        name = (str.substr(pos + 2)).c_str();
+        str = str.substr(0, pos);
     }
     else
     {
-        str = str.substr(0, str.find(">"));
+        pos = str.find(">");
+        name = (str.substr(pos + 1)).c_str();
+        str = str.substr(0, pos);
+        //strcpy(name, str.substr(pos + 1).c_str());
     }
+    strcpy(no_space_name, name);
+    remove_spaces(no_space_name);
     //Deal with no spaces around > or >> : as in date>temp.txt, becuase in real shell it works.
     Command *cmd = smash.CreateCommand(str.c_str());
     if (smash.append)
-        fd = open(args_char[2], O_CREAT | O_APPEND | O_WRONLY, 0666);
+        fd = open(no_space_name, O_CREAT | O_APPEND | O_WRONLY, 0666);
     else
-        fd = open(args_char[2], O_TRUNC | O_WRONLY | O_CREAT, 0666);
+        fd = open(no_space_name, O_CREAT | O_TRUNC | O_WRONLY, 0666);
     savestdout = dup(STDOUT_FILENO);
     dup2(fd, STDOUT_FILENO);
     close(fd);
@@ -514,18 +548,155 @@ void RedirectionCommand::execute()
 
 #pragma endregion
 
-//------------------------------- SmallShell ----------------------------------------------------
+#pragma region PipeCommand
+
+bool CheckBackground(const char *command)
+{
+    bool bg = false;
+    string argument(command);
+    if (argument.at(argument.size() - 1) == '&')
+        return true;
+    else
+        return false;
+}
+
+PipeCommand::PipeCommand(const char *cmd_line)
+{
+    vector<string> *args = new vector<string>();
+    int result = _parseCommandLine(cmd_line, args);
+    this->cmd_line = cmd_line;
+    if (std::count(args->begin(), args->end(), "|&") != 0)
+    {
+        this->is_amper = true;
+    }
+    else
+        this->is_amper = false;
+}
+
+string prepare(string str)
+{
+    int pos = str.find_last_of("&");
+    if (pos != -1)
+    {
+        str = str.substr(0, pos);
+        str = _trim(str);
+        str = str + "&";
+    }
+    return str;
+}
+
+void PipeCommand::execute()
+{
+    bool bg_pipe = false;
+    SmallShell &smash = SmallShell::getInstance();
+    Command *cmd1, *cmd2;
+    string cmd1_name, cmd2_name;
+    string str(this->cmd_line);
+    str = prepare(str);
+    int pos = str.find("|");
+    cmd1_name = str.substr(0, pos);
+    if (this->is_amper)
+    {
+        cmd2_name = _trim(str.substr(pos + 2));
+    }
+    else
+    {
+        cmd2_name = _trim(str.substr(pos + 1));
+    }
+
+    //cmd1_name = _trim(cmd1_name);
+    //cmd2_name = _trim(cmd2_name);
+
+    if (CheckBackground(cmd2_name.c_str()))
+        bg_pipe = true;
+    cmd1 = smash.CreateCommand(cmd1_name.c_str());
+    cmd2 = smash.CreateCommand(cmd2_name.c_str());
+
+    ChPrompt *changePrompt = dynamic_cast<ChPrompt *>(cmd1);
+    if (changePrompt != nullptr)
+    {
+        changePrompt->execute();
+    }
+    smash.forked = true;
+    pid_t pipe_pid = fork();
+    if (pipe_pid == 0)
+    {
+        setpgrp();
+        int mypipe[2];
+        pipe(mypipe);
+
+        pid_t pid_command1 = fork();
+        if (pid_command1 == 0)
+        {
+            if (this->is_amper)
+            {
+                dup2(mypipe[1], STDERR_FILENO);
+            }
+            else
+            {
+                dup2(mypipe[1], STDOUT_FILENO);
+            }
+            close(mypipe[0]);
+            close(mypipe[1]);
+            cmd1->execute();
+            //kill(getpid(), SIGKILL);
+            exit(0);
+        }
+
+        pid_t pid_command2 = fork();
+        if (pid_command2 == 0)
+        {
+            if (this->is_amper)
+            {
+                dup2(mypipe[0], STDERR_FILENO);
+            }
+            else
+            {
+                dup2(mypipe[0], STDIN_FILENO);
+            }
+            close(mypipe[0]);
+            close(mypipe[1]);
+            cmd2->execute();
+            //kill(getpid(), SIGKILL);
+            exit(0);
+        }
+
+        close(mypipe[1]);
+        close(mypipe[0]);
+        waitpid(pid_command1, NULL, WUNTRACED);
+        waitpid(pid_command2, NULL, WUNTRACED);
+        //kill(getpid(), SIGKILL);
+        //cout << "pipe pid2 :" << getpid() << endl;
+        exit(0);
+    }
+
+    else
+    { // Smash here
+        //cout << "smash pid waiting for pipe :" << getpid() << endl;
+        if (!bg_pipe)
+            waitpid(pipe_pid, NULL, WUNTRACED);
+        else
+            smash.jobList->addJob(this, pipe_pid);
+    }
+}
+
+#pragma endregion
+
+#pragma region SmallShell
 
 SmallShell::SmallShell()
 {
     this->current_pid = getpid();
     this->jobList = new JobsList();
     this->alive = true;
+    this->smash_pid = getpid();
+    this->timedList = new TimedList();
 }
 
 SmallShell::~SmallShell()
 {
     delete this->jobList;
+    delete this->timedList;
 }
 /**
 * Creates and returns a pointer to Command class which matches the given command line (cmd_line)
@@ -546,6 +717,17 @@ Command *SmallShell::CreateCommand(const char *cmd_line)
         return new RedirectionCommand(cmd_line);
     }
 
+    if (std::count(args->begin(), args->end(), "|") != 0 || std::count(args->begin(), args->end(), "|&") != 0)
+    {
+        delete args;
+        return new PipeCommand(cmd_line);
+    }
+
+    if (args->at(0) == "timeout")
+    {
+        delete args;
+        return new TimeoutCommand(cmd_line);
+    }
     if (args->at(0) == "chprompt")
     {
         std::string name = "smash";
@@ -715,6 +897,17 @@ void CheckBackground(vector<string> *args, char **args_char)
     }
 }
 
+void CheckTimeout(vector<string> *args, char **args_char)
+{
+    SmallShell &smash = SmallShell::getInstance();
+    smash.timeout = false;
+    string argument = args->at(0);
+    if (argument == "timeout")
+    {
+        smash.timeout = true;
+    }
+}
+
 void setToDefault()
 {
     SmallShell &smash = SmallShell::getInstance();
@@ -723,6 +916,8 @@ void setToDefault()
     smash.external = true;
     smash.background = false;
     smash.forked = false;
+    smash.piped = false;
+    smash.timeout = false;
 }
 
 void SmallShell::executeCommand(const char *cmd_line)
@@ -736,10 +931,10 @@ void SmallShell::executeCommand(const char *cmd_line)
     if (result == 0)
     {
         delete args;
-        for (int i = 0; i < COMMAND_MAX_ARGS; i++)
-        {
-            free(args_char[i]);
-        }
+        // for (int i = 0; i < COMMAND_MAX_ARGS; i++)
+        // {
+        //     free(args_char[i]);
+        // }
         delete[] args_char;
         return;
     }
@@ -747,6 +942,7 @@ void SmallShell::executeCommand(const char *cmd_line)
     CheckBuiltIn(args);
     CheckRedirection(args);
     CheckBackground(args, args_char);
+    CheckTimeout(args, args_char);
 
     cmd->execute();
 
@@ -757,29 +953,71 @@ void SmallShell::executeCommand(const char *cmd_line)
     // }
     delete[] args_char;
     delete cmd;
+
     setToDefault();
+}
+
+#pragma endregion
+
+string prepare_no_ampersand(string str)
+{
+    int pos = str.find_last_of("&");
+    if (pos != -1)
+    {
+        str = str.substr(0, pos);
+        str = _trim(str);
+    }
+    return str;
 }
 
 void ExternalCommand::execute()
 {
     pid_t pid;
+    char *cmd_copy = new char[COMMAND_MAX_ARGS];
+    strcpy(cmd_copy, this->cmd_line);
     SmallShell &smash = SmallShell::getInstance();
     vector<string> *args = new vector<string>();
     char **args_char = new char *[COMMAND_MAX_ARGS];
     _parseCommandLineChar(cmd_line, args_char);
     int result = _parseCommandLine(cmd_line, args);
     CheckBackground(args, args_char);
+    if (smash.background)
+    {
+        _removeBackgroundSign(cmd_copy);
+    }
+
+    char *arguments_for_execv[] = {"/bin/bash", "-c", cmd_copy, NULL};
     int status;
     pid = fork();
     if (pid < 0)
+    {
         perror("negative fork");
+    }
     else
     {
         if (pid == 0) //child
         {
-            setpgrp();
+            if (!smash.forked)
+                setpgrp();
 
-            if (execvp(args_char[0], args_char) == -1)
+            if (smash.timeout)
+            {
+                //timeout 10 sleep 15
+                string s;
+                std::vector<std::string>::const_iterator i = args->begin();
+                i++;
+                for (i; i != args->end(); ++i)
+                    s = s + *i + " ";
+                s = prepare_no_ampersand(s);
+                const char *cmd_line_temp = s.c_str();
+                strcpy(cmd_copy, cmd_line_temp);
+                arguments_for_execv[2] = cmd_copy;
+                // delete[] args_char;
+                // args_char = new char *[COMMAND_MAX_ARGS];
+                // _parseCommandLineChar(cmd_line, args_char);
+            }
+
+            if (execvp("/bin/bash", arguments_for_execv) == -1)
             {
                 perror("something went wrong");
                 for (int i = 0; i < COMMAND_MAX_ARGS; i++)
@@ -787,20 +1025,33 @@ void ExternalCommand::execute()
                     free(args_char[i]);
                 }
                 delete[] args_char;
-                kill(getpid(), SIGKILL);
+                exit(0);
             }
         }
+
         else
         { //parent
-            if (!smash.background)
+            if (smash.timeout)
+            {
+                //cout << getpid() << endl;
+                int duration = stoi(args->at(0));
+                alarm(duration);
+                smash.timedList->addTimed(cmd_line, pid, time(nullptr), duration);
+            }
+            if (smash.background == false)
             {
                 smash.current_pid = pid;
-                pid_t temp = waitpid(pid, &status, WUNTRACED);
+                waitpid(pid, &status, WUNTRACED);
                 smash.current_pid = getpid();
             }
             else
             {
                 smash.jobList->addJob(this, pid);
+            }
+            if (smash.forked)
+            {
+                //kill(getpid(), SIGKILL);
+                exit(0);
             }
         }
     }
@@ -813,6 +1064,7 @@ ChPrompt::ChPrompt(string name)
 
 void ChPrompt::execute()
 {
+    pid_t pid = getpid();
     SmallShell::getInstance().changePrompt(this->newPromptName);
 }
 
@@ -972,6 +1224,7 @@ void BackgroundCommand::execute()
 
 int JobsList::getMaximalStoppedJobId()
 {
+
     int max = 0;
     auto it = this->job_list->begin();
     while (it != this->job_list->end())
@@ -984,3 +1237,25 @@ int JobsList::getMaximalStoppedJobId()
     }
     return max;
 }
+
+void TimeoutCommand::execute()
+{
+    SmallShell &smash = SmallShell::getInstance();
+    vector<string> *args = new vector<string>();
+    _parseCommandLine(this->cmd_line, args);
+    std::string s;
+    std::vector<std::string>::const_iterator i = args->begin();
+    i++;
+    for (i; i != args->end(); ++i)
+        s = s + *i + " ";
+
+    const char *cmd_line = s.c_str();
+    Command *cmd = smash.CreateCommand(cmd_line);
+    //int duration = stoi(args->at(1));
+    //alarm(duration);
+    cmd->execute();
+}
+
+#pragma region CopyCommand
+
+#pragma endregion

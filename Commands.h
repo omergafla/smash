@@ -36,7 +36,6 @@ public:
     };
     virtual ~BuiltInCommand(){};
 };
-
 class ExternalCommand : public Command
 {
     pid_t pid;
@@ -52,7 +51,8 @@ public:
 
 class PipeCommand : public Command
 {
-    // TODO: Add your data members
+    bool is_amper;
+
 public:
     PipeCommand(const char *cmd_line);
     virtual ~PipeCommand(){};
@@ -179,6 +179,7 @@ public:
     void removeJobById(int jobId);
     JobEntry *getLastJob(int *lastJobId);
     JobEntry *getLastStoppedJob(int *jobId);
+    void removeJobByProcessIdid(int processId);
 };
 
 class JobsCommand : public BuiltInCommand
@@ -219,8 +220,8 @@ public:
 
 class BackgroundCommand : public BuiltInCommand
 {
-    // TODO: Add your data members
-    JobsList * joblist;
+    JobsList *joblist;
+
 public:
     BackgroundCommand(const char *cmd_line, JobsList *jobs)
     {
@@ -231,9 +232,6 @@ public:
     virtual ~BackgroundCommand() {}
     void execute() override;
 };
-
-// TODO: add more classes if needed
-// maybe ls, timeout ?
 
 class LsCommand : public BuiltInCommand
 {
@@ -246,6 +244,19 @@ public:
     void execute() override;
 };
 
+class TimeoutCommand : public Command
+{
+
+public:
+    const char *cmd_line;
+    TimeoutCommand(const char *cmd_line)
+    {
+        this->cmd_line = cmd_line;
+    }
+    virtual ~TimeoutCommand() {}
+    void execute() override;
+};
+
 class ChPrompt : public BuiltInCommand
 {
 public:
@@ -253,6 +264,79 @@ public:
     ChPrompt(string newPromptName);
     virtual ~ChPrompt(){};
     void execute() override;
+};
+
+class CpCommand : public BuiltInCommand
+{
+public:
+    // CpCommand(const char* cmd_line);
+    // virtual ~CpCommand(){};
+    // void CpCommand() override;
+};
+
+class TimedList
+{
+public:
+    class TimedEntry
+    {
+    public:
+        time_t timestamp;
+        int duration;
+        string command;
+        pid_t process_id;
+
+        bool operator==(TimedEntry &timed)
+        {
+            if (this->timestamp = timed.timestamp && this->duration == timed.duration && this->command == timed.command && this->process_id == timed.process_id)
+                return true;
+            return false;
+        }
+        bool operator!=(TimedEntry &timed)
+        {
+            if (*this == timed)
+                return false;
+            else
+                return true;
+        }
+        void operator=(TimedEntry *timed)
+        {
+            this->duration = timed->duration;
+            this->command = timed->command;
+            this->timestamp = timed->timestamp;
+            this->process_id = timed->process_id;
+        }
+    };
+    // TODO: Add your data members
+    //public:
+    map<int, TimedEntry *> *timed_list;
+    TimedList()
+    {
+        timed_list = new map<int, TimedEntry *>();
+    };
+    //JobsList(int process_id);
+    ~TimedList()
+    {
+        for (auto it = this->timed_list->begin(); it != this->timed_list->end();)
+        {
+            this->timed_list->erase(it++);
+            ++it;
+        }
+        delete this->timed_list;
+    }
+    void addTimed(string cmd, pid_t processId, time_t timestap, int duration)
+    {
+        TimedEntry *entry = new TimedEntry();
+        entry->command = cmd;
+        entry->timestamp = time(nullptr);
+        entry->process_id = processId;
+        entry->duration = duration;
+        pair<int, TimedEntry *> _pair = make_pair(processId, entry);
+        this->timed_list->insert(_pair);
+    }
+    void removeTimed(pid_t processId)
+    {
+        this->timed_list->erase(processId);
+    }
 };
 
 class SmallShell
@@ -265,13 +349,17 @@ public:
     JobsList *jobList;
     string previousDirectory = "";
     pid_t current_pid;
+    pid_t smash_pid;
     Command *command;
+    TimedList *timedList;
     bool alive;
     bool redirection = false;
     bool append = false;
     bool external = true;
     bool background = false;
     bool forked = false;
+    bool piped = false;
+    bool timeout = false;
 
     Command *CreateCommand(const char *cmd_line);
     SmallShell(SmallShell const &) = delete;     // disable copy ctor
@@ -290,7 +378,5 @@ public:
     void executeCommand(const char *cmd_line);
     // TODO: add extra methods as needed
 };
-
-
 
 #endif //SMASH_COMMAND_H_
