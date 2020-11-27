@@ -16,8 +16,9 @@ void ctrlZHandler(int sig_num)
   if (pid != getpid())
   {
     kill(pid, SIGSTOP);
-    cout << "process " << pid << " was stopped" << endl;
+    cout << "smash: process " << pid << " was stopped" << endl;
     smash.jobList->addJob(smash.command, pid, true);
+    smash.current_pid = getpid();
   }
 }
 
@@ -29,7 +30,7 @@ void ctrlCHandler(int sig_num)
   if (pid != getpid())
   {
     kill(pid, SIGKILL);
-    cout << "process " << pid << " was killed" << endl;
+    cout << "smash: process " << pid << " was killed" << endl;
   }
 
 }

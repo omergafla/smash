@@ -8,10 +8,11 @@
 
 #define COMMAND_ARGS_MAX_LENGTH (200)
 #define COMMAND_MAX_ARGS (20)
-#define HISTORY_MAX_RECORDS (50)
 
 using namespace std;
 
+
+bool CheckBackground(const char* cmd_line);
 class Command
 {
     // TODO: Add your data members
