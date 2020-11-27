@@ -26,6 +26,7 @@ int main(int argc, char *argv[])
     SmallShell &smash = SmallShell::getInstance();
     while (smash.alive)
     {
+        smash.jobList->removeFinishedJobs();
         std::cout << smash.promptName << "> ";
         std::string cmd_line;
         std::getline(std::cin, cmd_line);
