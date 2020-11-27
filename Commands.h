@@ -319,11 +319,12 @@ public:
     //JobsList(int process_id);
     ~TimedList()
     {
-        for (auto it = this->timed_list->begin(); it != this->timed_list->end();)
-        {
-            this->timed_list->erase(it++);
-            ++it;
-        }
+        // for (auto it = this->timed_list->begin(); it != this->timed_list->end();)
+        // {
+        //     this->timed_list->erase(it++);
+        //     ++it;
+        // }
+        this->timed_list->clear();
         delete this->timed_list;
     }
     void addTimed(string cmd, pid_t processId, time_t timestap, int duration)
@@ -342,6 +343,56 @@ public:
     }
 };
 
+
+class AlarmsList{
+    public:
+    class Alarm{
+    public:
+        time_t time_created;
+        int duration;
+        int scheduled_fire_time;
+        bool operator==(Alarm &alarm)
+        {
+            if (this->time_created == alarm.time_created && this->duration == alarm.duration)
+                return true;
+            return false;
+        }
+        bool operator!=(Alarm &alarm)
+        {
+            if (*this == alarm)
+                return false;
+            else
+                return true;
+        }
+        bool operator<(Alarm &alarm){
+            return this->scheduled_fire_time < alarm.scheduled_fire_time;   
+        }
+        void operator=(Alarm *alarm)
+        {
+            this->duration = alarm->duration;
+            this->time_created = alarm->time_created;
+        }
+    };
+    
+    vector<Alarm *> *alarms_list;
+    AlarmsList()
+    {
+        alarms_list = new vector<Alarm *>();
+    };
+    //JobsList(int process_id);
+    ~AlarmsList()
+    {
+        // for (auto it = this->alarms_list->begin(); it != this->alarms_list->end();)
+        // {
+        //     this->alarms_list->erase(it++);
+        //     ++it;
+        // }
+        this->alarms_list->clear();
+        delete this->alarms_list;
+    };
+    void fireAlarm();
+    void addAlarm(time_t timestamp, int duration);
+};
 class SmallShell
 {
 private:
@@ -355,6 +406,7 @@ public:
     pid_t smash_pid;
     Command *command;
     TimedList *timedList;
+    AlarmsList *alarmList;
     bool alive;
     bool redirection = false;
     bool append = false;

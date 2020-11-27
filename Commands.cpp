@@ -132,11 +132,19 @@ void ShowPidCommand::execute()
 
 JobsList::~JobsList()
 {
-    for (auto it = this->job_list->begin(); it != this->job_list->end();)
-    {
-        this->job_list->erase(it++);
-        ++it;
-    }
+
+    // for (auto it = this->job_list->begin(); it != this->job_list->end();)
+    // {
+    //     if (!this->isEmpty())
+    //     {
+    //         it = this->job_list->erase(it);
+    //     }
+    //     else
+    //     {
+    //         break;
+    //     }
+    // }
+    this->job_list->clear();
     delete this->job_list;
 }
 
@@ -261,7 +269,9 @@ void JobsList::removeJobById(int jobId)
         if (it->first == jobId)
         {
             this->job_list->erase(it);
+            break;
         }
+        it++;
     }
 }
 
@@ -797,12 +807,14 @@ SmallShell::SmallShell()
     this->alive = true;
     this->smash_pid = getpid();
     this->timedList = new TimedList();
+    this->alarmList = new AlarmsList();
 }
 
 SmallShell::~SmallShell()
 {
     delete this->jobList;
     delete this->timedList;
+    delete this->alarmList;
 }
 /**
 * Creates and returns a pointer to Command class which matches the given command line (cmd_line)
@@ -1092,9 +1104,9 @@ void ExternalCommand::execute()
         { //parent
             if (smash.timeout)
             {
-                //cout << getpid() << endl;
                 int duration = stoi(args->at(0));
-                alarm(duration);
+                //alarm(duration);
+                smash.alarmList->addAlarm(time(nullptr), duration);
                 smash.timedList->addTimed(cmd_line, pid, time(nullptr), duration);
             }
             if (smash.background == false)
@@ -1408,4 +1420,31 @@ void CpCommand::execute()
     }
 }
 
+#pragma endregion
+
+#pragma region Alarm
+void AlarmsList::fireAlarm()
+{
+    // for(int i = 0; i<this->alarms_list->size(); i++){
+    Alarm *current = this->alarms_list->at(0);
+    int new_duration = current->scheduled_fire_time - time(nullptr);
+    alarm(new_duration);
+    // }
+}
+
+bool alarmCompare(AlarmsList::Alarm *alarm1, AlarmsList::Alarm *alarm2)
+{
+    return alarm1->scheduled_fire_time < alarm2->scheduled_fire_time;
+}
+void AlarmsList::addAlarm(time_t timestamp, int duration)
+{
+    Alarm *entry = new Alarm();
+    entry->time_created = timestamp;
+    entry->duration = duration;
+    entry->scheduled_fire_time = time(nullptr) + duration;
+    this->alarms_list->push_back(entry);
+    sort(this->alarms_list->begin(), this->alarms_list->end(), alarmCompare);
+
+    fireAlarm();
+}
 #pragma endregion
