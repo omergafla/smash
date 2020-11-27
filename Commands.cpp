@@ -1332,7 +1332,23 @@ void TimeoutCommand::execute()
 {
     SmallShell &smash = SmallShell::getInstance();
     vector<string> *args = new vector<string>();
-    _parseCommandLine(this->cmd_line, args);
+    int result =_parseCommandLine(this->cmd_line, args);
+    if(result <= 2){
+        cout << "invalid arguments" << endl;
+        return;
+    }
+    try{
+        int check_time = stoi(args->at(1));
+        if(check_time<0){
+            cout << "invalid arguments" << endl;
+        return;
+        }
+    }
+    catch(invalid_argument){
+        cout << "invalid arguments" << endl;
+        return;
+    }
+
     std::string s;
     std::vector<std::string>::const_iterator i = args->begin();
     i++;
