@@ -11,8 +11,7 @@
 
 using namespace std;
 
-
-bool CheckBackground(const char* cmd_line);
+bool CheckBackground(const char *cmd_line);
 class Command
 {
     // TODO: Add your data members
@@ -79,6 +78,7 @@ class ChangeDirCommand : public BuiltInCommand
     string path;
 
 public:
+    string backup_previous = "";
     ChangeDirCommand(const char *cmd_line, string plastPwd);
     virtual ~ChangeDirCommand(){};
     void execute() override;
@@ -131,10 +131,11 @@ public:
         pid_t process_id;
         time_t insertion_time;
         bool stopped;
+        bool timeout;
         bool operator==(JobEntry &job)
         {
             if (job_id == job.job_id && command == job.command &&
-                process_id == job.process_id && insertion_time == job.insertion_time && stopped == job.stopped)
+                process_id == job.process_id && insertion_time == job.insertion_time && stopped == job.stopped && timeout == job.timeout)
                 return true;
             else
                 return false;
@@ -154,6 +155,7 @@ public:
             this->job_id = job->job_id;
             this->process_id = job->process_id;
             this->stopped = job->stopped;
+            this->timeout = job->timeout;
         }
     };
     // TODO: Add your data members
@@ -166,7 +168,7 @@ public:
     };
     //JobsList(int process_id);
     ~JobsList();
-    void addJob(Command *cmd, pid_t processId, bool isStopped = false);
+    void addJob(Command *cmd, pid_t processId, bool isStopped = false, bool timeout = false);
     void printJobsList();
     void printJobsListForQuit();
     int getMaximalJobId();
@@ -269,6 +271,8 @@ public:
 
 class CpCommand : public BuiltInCommand
 {
+    bool same;
+
 public:
     string source;
     string destination;
@@ -343,10 +347,11 @@ public:
     }
 };
 
-
-class AlarmsList{
-    public:
-    class Alarm{
+class AlarmsList
+{
+public:
+    class Alarm
+    {
     public:
         time_t time_created;
         int duration;
@@ -364,8 +369,9 @@ class AlarmsList{
             else
                 return true;
         }
-        bool operator<(Alarm &alarm){
-            return this->scheduled_fire_time < alarm.scheduled_fire_time;   
+        bool operator<(Alarm &alarm)
+        {
+            return this->scheduled_fire_time < alarm.scheduled_fire_time;
         }
         void operator=(Alarm *alarm)
         {
@@ -373,7 +379,7 @@ class AlarmsList{
             this->time_created = alarm->time_created;
         }
     };
-    
+
     vector<Alarm *> *alarms_list;
     AlarmsList()
     {

@@ -54,28 +54,26 @@ string _trim2(const std::string &s)
 
 void alarmHandler(int sig_num)
 {
-  // TODO: Add your implementation
   SmallShell &smash = SmallShell::getInstance();
   cout << "smash: got an alarm" << endl;
-  auto endit = smash.timedList->timed_list->end();
   for (auto it = smash.timedList->timed_list->begin(); it != smash.timedList->timed_list->end();)
   {
     if (smash.timedList->timed_list->empty())
     {
       break;
     }
-    bool flag = it != smash.timedList->timed_list->end();
     int dif = difftime(time(nullptr), it->second->timestamp + it->second->duration);
     bool time_diff = (dif >= 0);
     int pid = it->first;
     if (time_diff)
     {
       int status;
-      int returned_pid = waitpid(pid, &status, WCONTINUED | WUNTRACED | WNOHANG);
+      int returned_pid = waitpid(pid, &status, /*WCONTINUED | WUNTRACED | */WNOHANG);
       // bool is_exited = WIFEXITED(status);
+      bool is_exited = WIFEXITED(status);
+      // bool is_signaled = WIFSIGNALED(status);
       if (returned_pid != -1)
       {
-
         kill(it->first, SIGKILL);
         cout << "smash: timeout " << _trim2(it->second->command) << " timed out!" << endl;
         int pid2020 = it->first;
@@ -88,6 +86,12 @@ void alarmHandler(int sig_num)
         if (it != smash.timedList->timed_list->begin())
           it--;
       }
+        else
+        {
+          smash.timedList->timed_list->erase(it);
+        }
+        
+      
     }
     ++it;
   }
