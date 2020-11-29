@@ -126,6 +126,7 @@ string prepare_no_ampersand(string str)
 
 void ShowPidCommand::execute()
 {
+    //cout << "smash pid is " << SmallShell::getInstance().smash_pid << endl;
     cout << "smash pid is " << SmallShell::getInstance().smash_pid << endl;
 }
 
@@ -593,6 +594,13 @@ void RedirectionCommand::execute()
 
     //Deal with no spaces around > or >> : as in date>temp.txt, becuase in real shell it works.
     Command *cmd = smash.CreateCommand(str.c_str());
+    QuitCommand *quit = dynamic_cast<QuitCommand *>(cmd);
+    if (quit != nullptr)
+    {
+        quit->execute();
+        return;
+    }
+
     if (smash.append)
         fd = open(name.c_str(), O_CREAT | O_APPEND | O_WRONLY, 0666);
     else
@@ -697,9 +705,6 @@ void PipeCommand::execute()
         cmd2_name = _trim(str.substr(pos + 1));
     }
 
-    //cmd1_name = _trim(cmd1_name);
-    //cmd2_name = _trim(cmd2_name);
-
     if (CheckBackground(cmd2_name.c_str()))
         bg_pipe = true;
     cmd1 = smash.CreateCommand(cmd1_name.c_str());
@@ -710,6 +715,14 @@ void PipeCommand::execute()
     {
         changePrompt->execute();
     }
+
+    QuitCommand *quit = dynamic_cast<QuitCommand *>(cmd1);
+    if (quit != nullptr)
+    {
+        quit->execute();
+        return;
+    }
+
     smash.forked = true;
     pid_t pipe_pid = fork();
     if (pipe_pid == -1)
@@ -722,7 +735,6 @@ void PipeCommand::execute()
         setpgrp();
         int mypipe[2];
         pipe(mypipe);
-
         pid_t pid_command1 = fork();
         if (pid_command1 == -1)
         {
@@ -747,7 +759,6 @@ void PipeCommand::execute()
             }
             if (close(mypipe[0]) == -1)
             {
-
                 perror("smash error: close failed");
             }
             if (close(mypipe[1]) == -1)
@@ -756,7 +767,6 @@ void PipeCommand::execute()
                 perror("smash error: close failed");
             }
             cmd1->execute();
-            //kill(getpid(), SIGKILL);
             exit(0);
         }
 
@@ -768,20 +778,20 @@ void PipeCommand::execute()
         }
         if (pid_command2 == 0)
         {
-            if (this->is_amper)
+            // if (this->is_amper)
+            // {
+            //     if (dup2(mypipe[0], STDERR_FILENO) == -1)
+            //     {
+            //         perror("smash error: dup2 failed");
+            //     }
+            // }
+            // else
+            // {
+            if (dup2(mypipe[0], STDIN_FILENO) == -1)
             {
-                if (dup2(mypipe[0], STDERR_FILENO) == -1)
-                {
-                    perror("smash error: dup2 failed");
-                }
+                perror("smash error: dup2 failed");
             }
-            else
-            {
-                if (dup2(mypipe[0], STDIN_FILENO) == -1)
-                {
-                    perror("smash error: dup2 failed");
-                }
-            }
+            //}
             if (close(mypipe[0]) == -1)
             {
                 perror("smash error: close failed");
@@ -790,8 +800,8 @@ void PipeCommand::execute()
             {
                 perror("smash error: close failed");
             }
+
             cmd2->execute();
-            //kill(getpid(), SIGKILL);
             exit(0);
         }
 
@@ -811,8 +821,6 @@ void PipeCommand::execute()
         {
             perror("smash error: waitpaid failed");
         }
-        //kill(getpid(), SIGKILL);
-        //cout << "pipe pid2 :" << getpid() << endl;
         exit(0);
     }
 
