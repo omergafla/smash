@@ -102,8 +102,14 @@ void alarmHandler(int sig_num)
     if (next_alarm != nullptr)
     {
       int delta = next_alarm->scheduled_fire_time - time(nullptr);
-      if (delta > 0)
-        alarm(delta);
+      if (delta > 0){
+        int alarm_result = alarm(delta);
+        if(alarm_result == -1){
+                  perror("smash error: alarm failed");
+
+        }
+
+      }
     }
   }
 }

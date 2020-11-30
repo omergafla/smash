@@ -727,7 +727,7 @@ void PipeCommand::execute()
     pid_t pipe_pid = fork();
     if (pipe_pid == -1)
     {
-        perror("smash error: fork faild");
+        perror("smash error: fork failed");
         exit(0);
     }
     if (pipe_pid == 0)
@@ -738,7 +738,7 @@ void PipeCommand::execute()
         pid_t pid_command1 = fork();
         if (pid_command1 == -1)
         {
-            perror("smash error: fork faild");
+            perror("smash error: fork failed");
             exit(0);
         }
         if (pid_command1 == 0)
@@ -1220,7 +1220,9 @@ void LsCommand::execute()
     int n;
     int i = 0;
     n = scandir(".", &namelist, NULL, alphasort);
-
+    if(n == -1){
+        perror("smash error: scandir failed");
+    }
     if (n > 0)
     {
         while (i < n)
@@ -1581,7 +1583,10 @@ void AlarmsList::fireAlarm()
     // for(int i = 0; i<this->alarms_list->size(); i++){
     Alarm *current = this->alarms_list->at(0);
     int new_duration = current->scheduled_fire_time - time(nullptr);
-    alarm(new_duration);
+    int alarm_result = alarm(new_duration);
+    if(alarm_result == -1){
+        perror("smash error: alarm failed");
+    }
     // }
 }
 
