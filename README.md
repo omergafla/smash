@@ -4,7 +4,7 @@
 <h3> Built In Commands: </h3>
 
 <ol>
-  <li>PWD</li>
+  <li>PWD <em>current working directory</em></li>
   <li>Showpid</li>
   <li>Chprompt</li>
   <li>CD</li>
