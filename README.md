@@ -5,11 +5,13 @@
 
 <ol>
   <li>PWD <em>current working directory</em></li>
-  <li>Showpid</li>
-  <li>Chprompt</li>
-  <li>CD</li>
-  <li>FG</li>
-  <li>BG</li>
-  <li>Kill</li>
-  <li>Jobs</li>
+  <li>Showpid <em>current proccess ID</em></li>
+  <li>Chprompt <em>set the smash name</em></li>
+  <li>CD <em>change dir</em></li>
+  <li>CP <em>copy</em></li>
+  <li>FG <em>move job to the foreground</em></li>
+  <li>BG <em>move job to the background</em></li>
+  <li>Kill <em>send signals</em></li>
+  <li>Jobs <em>print current jobs</em></li>
+   <li>Redirection & Pipe</li>
   </ol>
